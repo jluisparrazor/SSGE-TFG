@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+// ---------------------------------------------------------
+// ENTIDADES DEL DOMINIO (DDD)
+// ---------------------------------------------------------
+
+model Embalse {
+  id              Int      @id @default(autoincrement())
+  nombre          String
+  capacidadHm3    Float    // Volumen máximo que puede almacenar
+  cotaMaximaM     Float    // Altura máxima por seguridad
+  cotaMinimaM     Float    @default(0)// Altura mínima por seguridad
+  saihEstacionCodigo String?
+  saihIdPunto      String?
+  
+  // Relaciones (Un embalse tiene muchos sensores, compuertas e historial)
+  sensores        Sensor[]
+  senalesAsignadas EmbalseSenal[]
+  compuertas      Compuerta[]
+  historiales     HistorialSimulacion[]
+  mediciones      MedicionHistorica[]
+}
+
+model Senal {
+  id            Int      @id @default(autoincrement())
+  codigo        String   @unique // Identificador externo/SAIH de la señal
+  nombre        String
+  unidad        String?
+  descripcion   String?
+  tipoDato      String   @default("float")
+  activa        Boolean  @default(true)
+
+  embalses      EmbalseSenal[]
+}
+
+model EmbalseSenal {
+  id            Int      @id @default(autoincrement())
+  embalseId     Int
+  senalId       Int
+  alias         String?
+  activa        Boolean  @default(true)
+  fechaAlta     DateTime @default(now())
+  fechaBaja     DateTime?
+
+  embalse       Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+  senal         Senal    @relation(fields: [senalId], references: [id], onDelete: Cascade)
+  mediciones    MedicionHistorica[]
+
+  @@unique([embalseId, senalId])
+  @@index([embalseId])
+  @@index([senalId])
+  @@index([activa])
+}
+
+model Sensor {
+  id              Int      @id @default(autoincrement())
+  tipo            String   // Ej. "Nivel", "Lluvia", "pH", "Turbidez"
+  valorActual     Float    // El número que lee el sensor
+  
+  // Relación con el Embalse
+  embalseId       Int
+  embalse         Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+}
+
+model Compuerta {
+  id                       Int      @id @default(autoincrement())
+  nombre                   String   // Ej. "Aliviadero Superficie", "Desagüe de Fondo"
+  cotaTomaM                Float?
+  estadoAperturaPorcentaje Float    // De 0% a 100%
+  caudalSalidaActual       Float    // El agua que está soltando en m³/s
+  
+  // Relación con el Embalse
+  embalseId                Int
+  embalse                  Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+}
+
+model HistorialSimulacion {
+  id                Int      @id @default(autoincrement())
+  fechaHora         DateTime @default(now()) // Timestamp automático
+  eventoDisparador  String   // Ej. "Alerta: Previsión lluvia > 80mm"
+  accionAutomatica  String   // Ej. "Apertura Compuerta 1 al 30%"
+  
+  // Relación con el Embalse
+  embalseId         Int
+  embalse           Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+}
+
+model MedicionHistorica {
+  id            Int      @id @default(autoincrement())
+  timestamp     DateTime
+  nivel         Float
+  volumen       Float
+  precipitacion Float
+  
+  // Añade el @default(0) a las tres columnas
+  temperatura   Float    @default(0)
+  caudalEntrada Float    @default(0)
+  caudalSalida  Float    @default(0)
+  
+  embalseId     Int
+  embalse       Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+  embalseSenalId Int?
+  embalseSenal  EmbalseSenal? @relation(fields: [embalseSenalId], references: [id], onDelete: SetNull)
+
+  @@index([timestamp])
+  @@index([embalseSenalId])
+}
