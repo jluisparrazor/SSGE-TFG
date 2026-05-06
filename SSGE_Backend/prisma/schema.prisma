@@ -89,8 +89,9 @@ model Compuerta {
 model HistorialSimulacion {
   id                Int      @id @default(autoincrement())
   fechaHora         DateTime @default(now()) // Timestamp automático
-  eventoDisparador  String   // Ej. "Alerta: Previsión lluvia > 80mm"
-  accionAutomatica  String   // Ej. "Apertura Compuerta 1 al 30%"
+  tipo              String   @default("info") // warning | success | info
+  eventoDisparador  String   
+  accionAutomatica  String   
   
   // Relación con el Embalse
   embalseId         Int

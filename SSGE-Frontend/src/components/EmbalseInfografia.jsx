@@ -2,14 +2,13 @@ import './EmbalseInfografia.css';
 import { TriangleAlert, CheckCircle } from 'lucide-react';
 
 function EmbalseInfografia({ datoActual = {},
-  theme = { panel: '#1e293b', border: '#334155', accent: '#06b6d4' },
   embalseNombre = 'Embalse de Canales',
   compuertas = []}) {
   const cotaMax = datoActual.cotaMaximaM ?? 960;
   const cotaMin = datoActual.cotaMinimaM ?? 900;
   const rangoCotas = cotaMax - cotaMin;
 
-  // Ajuste fino del eje vertical para que la cota minima quede en la punta inferior visible del embalse.
+  // Ajuste del eje vertical para que la cota minima quede en la punta inferior visible del embalse.
   const Y_MAX_GRAFICO = 110;
   const Y_MIN_GRAFICO = 492;
   const Y_REGLA_TOP = Y_MAX_GRAFICO - 12;
@@ -31,11 +30,18 @@ function EmbalseInfografia({ datoActual = {},
 
   const lineasRegla = [];
   const primerMultiplo = Math.ceil(cotaMin / intervalo) * intervalo;
+
   for (let cota = primerMultiplo; cota < cotaMax; cota += intervalo) {
     lineasRegla.push(cota);
   }
-  lineasRegla.unshift(cotaMin);
-  lineasRegla.push(cotaMax);
+
+  if (lineasRegla.length === 0 || Math.abs(lineasRegla[0] - cotaMin) > intervalo / 2) {
+    lineasRegla.unshift(cotaMin);
+  }
+
+  if (Math.abs(lineasRegla[lineasRegla.length - 1] - cotaMax) > intervalo / 2) {
+    lineasRegla.push(cotaMax);
+  }
 
   const normalizarNumero = (valor) => {
     const n = Number(valor);
@@ -68,14 +74,7 @@ function EmbalseInfografia({ datoActual = {},
   const enAlerta = Number(datoActual?.porcentaje || 0) > 80;
 
   return (
-    <div
-      className="embalse-card"
-      style={{
-        '--panel-bg': theme.panel,
-        '--border-color': theme.border,
-        '--accent-color': theme.accent
-      }}
-    >
+    <div className="embalse-card">
       <div className="embalse-card-header">
         <h3 className="embalse-card-title">{embalseNombre}</h3>
         <span className={`embalse-card-badge ${enAlerta ? 'embalse-card-badge--alert' : 'embalse-card-badge--normal'}`}>
@@ -119,7 +118,7 @@ function EmbalseInfografia({ datoActual = {},
           {lineasRegla.map((cota, i) => {
             const yPos = calcularPosicionY(cota);
             const labelY = yPos >= (Y_MIN_GRAFICO - 6)
-              ? yPos - 6
+              ? yPos - 3
               : (yPos <= (Y_REGLA_TOP + 6) ? yPos + 12 : yPos + 4);
             return (
               <g key={i}>

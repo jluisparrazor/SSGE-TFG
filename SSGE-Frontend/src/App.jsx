@@ -1,87 +1,332 @@
-import { useState } from 'react'
+import { useEffect, useState, useRef, use } from 'react'
+import { io } from 'socket.io-client';
 import { Thermometer, CloudRain, Waves, TriangleAlert, ArrowRightFromLine, CheckCircle} from 'lucide-react';
 import {LineChart, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Line} from 'recharts';
 
 import EmbalseInfografia from './components/EmbalseInfografia'
+import PanelNivelAguaHistorico from './components/PanelNivelAguaHistorico';
 import './App.css'
 
+const socket = io('http://localhost:3000');
 
 function App() {
 
-  // Esto bloque habrá que cambiarlo más adelante, cuando se integre con el backend. Por ahora sirve para mostrar datos de ejemplo en la infografía y en los sensores.
-  
-  const theme = {
-    bg: '#0b1120', panel: '#1e293b', border: '#334155', text: '#f8fafc', accent: '#06b6d4', muted: '#94a3b8'
-  };
+  const [embalses, setEmbalses] = useState([]);
 
-  const datoActualMock = {
-    nivel: 950.4,
-    porcentaje: 85.2,
-    volumenActualHm3: 21.6,
+  const [ultimasAlertas, setUltimasAlertas] = useState([]);
+
+  // Para mantener el embalse seleccionado al recargar la página, hago uso de localStorage
+  const [embalseSeleccionadoId, setEmbalseSeleccionadoId] = useState(() => {
+    try {
+      return localStorage.getItem('embalseSeleccionadoId') || '';
+    }
+    catch (error) {
+      console.error('Error accediendo a localStorage:', error);
+      return '';
+    }
+  });
+
+  // Este estado se actualizará con los datos reales que lleguen del backend a través de Socket.IO. Por ahora, se inicializa con valores de ejemplo.
+  const [datoActual, setDatoActual] = useState({
+    nivel: 0,
+    porcentaje: 0,
+    volumen: 0,
+    temperatura: 0,
+    precipitacion: 0,
+    caudalEntrada: 0,
+    caudalSalida: 0,
     cotaMaximaM: 960,
     cotaMinimaM: 900,
-    caudalEntrada: 12.3,
-    caudalSalida: 8.1,
-    temperatura: 17.2,
-    precipitacion: 0.0
+    timestamp: '--/--/-- --:--'
+  })
+
+  const [refreshHitoricoToken, setRefreshHistoricoToken] = useState(0); // Este estado se usará para forzar la actualización del gráfico histórico cuando llegue un nuevo dato actual.
+  const syncTimeoutRef = useRef(null); // Ref para almacenar el timeout de sincronización horaria.
+  const embalseSeleccionado = embalses.find((emb) => String(emb.id) === String(embalseSeleccionadoId)) || null;
+  const embalseTiempoRealId = embalses.length > 0 ? embalses[0].id : null; // Para la demo, se toma el primer embalse como el que muestra datos en tiempo real. Esto se cambiará cuando se integre el selector de embalse.
+  const capacidadMaxima = embalseSeleccionado?.capacidadHm3 || 70.8;
+  const [cargandoEmbalses, setCargandoEmbalses] = useState(true);
+  const [errorEmbalses, setErrorEmbalses] = useState('');
+
+  // Función para procesar la cadena de fecha que llega del backend y convertirla a timestamp. El formato esperado es "dd/MM/yy-HH:mm".
+  const procesarDateStr = (dateStr) => {
+    if(!dateStr || !dateStr.includes('-')) return 0;
+    const [datePart, timePart] = dateStr.split('-');
+    const [dia, mes, anio] = datePart.split('/');
+    const [hora, min] = timePart.split(':');
+    return new Date(parseInt(anio)+2000, parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min), 0, 0).getTime();
   };
 
-  const embalseSeleccionadoMock = {
-    nombre: 'Embalse Demo',
-    compuertas: []
+  // Función para procesar el dato bruto que llega del backend y convertirlo a un formato más manejable para la aplicación. Se encarga de extraer los valores numéricos de las mediciones, calcular el porcentaje de llenado, y parsear el timestamp.
+  const procesarDatoBruto = (dato) => {
+    const medicionesCrudas = dato?.mediciones || {};
+
+    const parsearNumero = (valor) => {
+      if (valor === null || valor === undefined) return null;
+      if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+      if (typeof valor === 'string') {
+        const limpio = valor.trim();
+        if (!limpio) return null;
+        const num = parseFloat(limpio.replace(',', '.'));
+        return Number.isFinite(num) ? num : null;
+      }
+      return null;
+    };
+
+    // Función para extraer un número de las mediciones crudas, probando varias claves posibles. Devuelve el primer número válido que encuentra o null si no encuentra ninguno.
+    const extraerNumero = (...claves ) => {
+      for (const clave of claves) {
+        if (!Object.prototype.hasOwnProperty.call(medicionesCrudas, clave)) continue;
+        const num = parsearNumero(medicionesCrudas[clave]);
+        if (num !== null) return num;
+      }
+      return null;
+    };
+
+    // Función para parsear el timestamp que llega del backend, que puede estar en formato ISO o en formato "dd/MM/yy-HH:mm".
+    const parsearTimestampSocket = (valorTimestamp) => {
+      if (!valorTimestamp) return null;
+
+      const fechaDirecta = new Date(valorTimestamp);
+      if (!Number.isNaN(fechaDirecta.getTime())) {
+        return fechaDirecta.getTime();
+      }
+
+      const match = valorTimestamp.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})[,\-]\s*(\d{1,2}):(\d{2})$/);
+      if (!match) return null;
+
+      const [, d, m, y, h, min] = match;
+      const anio = y.length === 2 ? Number(`20${y}`) : Number(y);
+      const fecha = new Date(anio, Number(m) - 1, Number(d), Number(h), Number(min));
+      return Number.isNaN(fecha.getTime()) ? null : fecha.getTime();
+    };
+
+    const volumen = extraerNumero('VOLUMEN EMBALSADO (hm³)', 'volumen');
+    const porcentajeCalc = volumen !== null ? Math.min(100, Number(((volumen / capacidadMaxima) * 100).toFixed(1))) : null;
+
+    return {
+      timestamp: parsearTimestampSocket(dato?.timestamp),
+      nivel: extraerNumero('NIVEL (m.s.n.m.)', 'nivel'),
+      porcentaje: porcentajeCalc,
+      volumen: volumen,
+      caudalEntrada: extraerNumero('CAUDAL DE ENTRADA (m³/s)', 'caudal_entrada'),
+      caudalSalida: extraerNumero('CAUDAL DE SALIDA (m³/s)', 'caudal_salida'),
+      temperatura: extraerNumero('TEMPERATURA (°C)', 'temperatura'),
+      precipitacion: extraerNumero('PRECIPITACIÓN (mm)', 'precipitacion'),
+      cotaMaximaM: parsearNumero(dato?.cotaMaximaM),
+      cotaMinimaM: parsearNumero(dato?.cotaMinimaM)
+    };
   };
 
-  const datoActualSeguro = datoActualMock;
-  const embalseSeguro = embalseSeleccionadoMock;
+  useEffect(() => {
+    const cargarEmbalses = async () => {
+      try {
+        setCargandoEmbalses(true);
+        setErrorEmbalses('');
 
-  const datosHistoricos = [
-    { timestamp: new Date('2026-04-09T00:00:00').getTime(), nivel: 949.8 },
-    { timestamp: new Date('2026-04-09T04:00:00').getTime(), nivel: 950.1 },
-    { timestamp: new Date('2026-04-09T08:00:00').getTime(), nivel: 950.0 },
-    { timestamp: new Date('2026-04-09T12:00:00').getTime(), nivel: 950.4 },
-    { timestamp: new Date('2026-04-09T16:00:00').getTime(), nivel: 950.6 },
-    { timestamp: new Date('2026-04-09T20:00:00').getTime(), nivel: 950.3 }
-  ];
+        const res = await fetch('http://localhost:3000/api/embalses');
+        if (!res.ok) throw new Error(`No se pudieron cargar los embalses: ${res.statusText}`);
 
-  const dominioNivelHistorico = [
-    Math.min(...datosHistoricos.map((item) => item.nivel)) - 0.5,
-    Math.max(...datosHistoricos.map((item) => item.nivel)) + 0.5
-  ];
+        const datos = await res.json();
+        const listaEmbalses = Array.isArray(datos) ? datos : [];
+        setEmbalses(listaEmbalses);
+        
+        setEmbalseSeleccionadoId((prevId) => {
+          if (listaEmbalses.length === 0) return '';
+          const existeSeleccionActual = prevId && listaEmbalses.some((e) => String(e.id) === String(prevId));
+          if (existeSeleccionActual) return prevId;
 
-  const alertasMock = [
-    {
-      id: 1,
-      tipo: 'warning',
-      hora: '14:30',
-      titulo: 'Prealerta de lluvias',
-      descripcion: 'Acción automática: aumentando caudal de salida a 10 m³/s para crear resguardo.'
-    },
-    {
-      id: 2,
-      tipo: 'success',
-      hora: '12:15',
-      titulo: 'Nivel estabilizado',
-      descripcion: 'El nivel del embalse se mantiene dentro del rango objetivo.'
-    },
-    {
-      id: 3,
-      tipo: 'warning',
-      hora: '10:40',
-      titulo: 'Caudal de entrada alto',
-      descripcion: 'Se detectó un aumento rápido del caudal de entrada a 15 m³/s en la última hora.'
-    },
-    {
-      id: 4,
-      tipo: 'success',
-      hora: '09:05',
-      titulo: 'Sistema en normalidad',
-      descripcion: 'Todos los sensores reportan valores correctos.'
+          try {
+            const guardado = localStorage.getItem('embalseSeleccionadoId');
+            const existeGuardado = guardado && listaEmbalses.some((e) => String(e.id) === String(guardado));
+            if (existeGuardado) return String(guardado);
+          } catch (_error) {
+            console.warn('No se pudo acceder a localStorage para recuperar el embalse seleccionado:', _error);
+          }
+
+          return String(listaEmbalses[0].id);
+        });
+      } catch (error) {
+        console.error('Error cargando embalses:', error);
+        setErrorEmbalses('No se pudieron cargar los embalses. Inténtalo de nuevo más tarde.');
+      } finally {
+        setCargandoEmbalses(false);
+      }
+    };
+
+    cargarEmbalses();
+
+    const interval = setInterval(cargarEmbalses, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Guardar el embalse seleccionado en localStorage cada vez que cambie, para mantener la selección al recargar la página.
+  useEffect(() => {
+    if (!embalseSeleccionadoId) return;
+    try {
+      localStorage.setItem('embalseSeleccionadoId', String(embalseSeleccionadoId));
+    } catch (error) {
+      console.error('No se pudo guardar embalseSeleccionadoId:', error);
     }
-  ];
+  }, [embalseSeleccionadoId]);
 
-  const ultimasAlertas = alertasMock.slice(-4);
+  useEffect(() => {
+    const cargarDatosIniciales = async () => {
+      try {
+        const res = await fetch(`http://localhost:3000/api/mediciones?rango=dia&embalseId=${embalseSeleccionadoId}&limite=4`);
+        if (!res.ok) throw new Error(`Error al cargar datos iniciales: ${res.statusText}`);
 
-  // Fin del bloque de datos de ejemplo.
+        let historial = await res.json();
+        if (historial.length > 0) {
+          historial.sort((a, b) => parseoDateStr(b.timestamp) - parseoDateStr(a.timestamp));
+          const ult = historial[0];
+          const porcentajeCalc = Number(((ult.volumen / capacidadMaxima) * 100).toFixed(1));
+
+          setDatoActual({
+            ...ult,
+            porcentaje: porcentajeCalc || 0,
+            caudalEntrada: ult.caudalEntrada || 0,
+            caudalSalida: ult.caudalSalida || 0,
+            temperatura: ult.temperatura || 0,
+            precipitacion: ult.precipitacion || 0,
+            cotaMaximaM: ult.cotaMaximaM || 960,
+            cotaMinimaM: ult.cotaMinimaM || 900,
+            timestamp: ult.timestamp || '--/--/-- --:--',
+          });
+        } else {
+          setDatoActual((prev) => ({ 
+            ...prev,
+            porcentaje: 0,
+            volumen: 0,
+            nivel: embalseSeleccionado?.cotaMinimaM ?? prev.nivel,
+            caudalEntrada: 0,
+            caudalSalida: 0,
+            temperatura: 0,
+            precipitacion: 0,
+            cotaMaximaM: embalseSeleccionado?.cotaMaximaM ?? 960,
+            cotaMinimaM: embalseSeleccionado?.cotaMinimaM ?? 900,
+            timestamp: '--/--/-- --:--' }));
+        }
+      } catch (error) {
+        console.error('Error cargando datos iniciales:', error);
+      }
+    };
+    
+    cargarDatosIniciales();
+  }, [embalseSeleccionadoId, capacidadMaxima, embalseSeleccionado?.cotaMaximaM, embalseSeleccionado?.cotaMinimaM]);
+
+  useEffect(() => {
+    const manejadorSocket = (payload) => {
+      const payloadEmbalseId = Number(payload?.embalseId);
+      const hayEmbalseEnPayload = Number.isFinite(payloadEmbalseId);
+      const embalseObjetivoId = hayEmbalseEnPayload ? payloadEmbalseId : Number(embalseSeleccionadoId);
+
+      // Si el evento indica embalse explícito, solo actualizamos si coincide con el seleccionado.
+      if (hayEmbalseEnPayload && Number(embalseSeleccionadoId) !== payloadEmbalseId) {
+        return;
+      }
+
+      // Compatibilidad con payloads antiguos sin embalseId.
+      if (!hayEmbalseEnPayload && (!embalseSeleccionadoId || Number(embalseSeleccionadoId) !== Number(embalseTiempoRealId))) {
+        return;
+      }
+
+      const nuevoEstado = procesarDatoBruto(payload);
+      setDatoActual((prev) => ({
+        ...prev,
+        timestamp: nuevoEstado.timestamp ?? prev.timestamp,
+        timestampNum: nuevoEstado.timestampNum ?? prev.timestampNum,
+        nivel: nuevoEstado.nivel ?? prev.nivel,
+        volumen: nuevoEstado.volumen ?? prev.volumen,
+        precipitacion: nuevoEstado.precipitacion ?? prev.precipitacion,
+        temperatura: nuevoEstado.temperatura ?? prev.temperatura,
+        caudalEntrada: nuevoEstado.caudalEntrada ?? prev.caudalEntrada,
+        caudalSalida: nuevoEstado.caudalSalida ?? prev.caudalSalida,
+        porcentaje: nuevoEstado.porcentaje ?? prev.porcentaje,
+        cotaMaximaM: nuevoEstado.cotaMaximaM ?? prev.cotaMaximaM,
+        cotaMinimaM: nuevoEstado.cotaMinimaM ?? prev.cotaMinimaM
+      }));
+
+      // Fuerza recarga de la gráfica histórica tras cada medición nueva.
+      setRefreshHistoricoToken((prev) => prev + 1);
+
+      // Reconciliación: refresca desde BD para aplicar la misma lógica que en recarga manual (LOCF, etc.).
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+
+      syncTimeoutRef.current = setTimeout(async () => {
+        try {
+          if (!embalseObjetivoId) return;
+
+          const res = await fetch(`http://localhost:3000/api/mediciones?rango=dia&embalseId=${embalseObjetivoId}&limite=1`);
+          if (!res.ok) return;
+
+          const historial = await res.json();
+          if (!Array.isArray(historial) || historial.length === 0) return;
+
+          const ultimo = historial[0];
+          const porcentajeCalc = Number(((ultimo.volumen / capacidadMaxima) * 100).toFixed(1));
+
+          setDatoActual((prev) => ({
+            ...prev,
+            ...ultimo,
+            porcentaje: porcentajeCalc > 100 ? 100 : porcentajeCalc,
+            caudalEntrada: ultimo.caudalEntrada || 0,
+            caudalSalida: ultimo.caudalSalida || 0,
+            temperatura: ultimo.temperatura || 0,
+            cotaMaximaM: ultimo.cotaMaximaM ?? prev.cotaMaximaM,
+            cotaMinimaM: ultimo.cotaMinimaM ?? prev.cotaMinimaM,
+            timestampNum: parseoDateStr(ultimo.timestamp)
+          }));
+        } catch (_error) {
+          // Si falla esta reconciliación, mantenemos el dato en vivo y esperamos el siguiente ciclo.
+        }
+      }, 300);
+    };
+
+    socket.on('actualizar_dashboard', manejadorSocket);
+    return () => {
+      socket.off('actualizar_dashboard', manejadorSocket);
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [embalseSeleccionadoId, embalseTiempoRealId, capacidadMaxima]);
+
+  useEffect(() => {
+    const cargarAlertas = async () => {
+      if (!embalseSeleccionadoId) {
+        setUltimasAlertas([]);
+        return;
+      }
+
+      try {
+        const res = await fetch(`http://localhost:3000/api/historial-simulacion?embalseId=${embalseSeleccionadoId}&limite=4`);
+        if (!res.ok) {
+          throw new Error('Error al cargar las alertas');
+        }
+        const data = await res.json();
+        setUltimasAlertas(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Error al cargar las alertas:', error);
+        setUltimasAlertas([]);
+      }
+    };
+
+    cargarAlertas();
+
+    const  interval = setInterval(cargarAlertas, 60000);
+    return () => clearInterval(interval);
+  }, [embalseSeleccionadoId]);
+
+  const parseoDateStr = (dateStr) => {
+    if(!dateStr || !dateStr.includes('-')) return 0;
+    const [datePart, timePart] = dateStr.split('-');
+    const [dia, mes, anio] = datePart.split('/');
+    const [hora, min] = timePart.split(':');
+    return new Date(parseInt(anio)+2000, parseInt(mes)-1, parseInt(dia), parseInt(hora), parseInt(min), 0, 0).getTime();
+  };
 
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
 
@@ -138,20 +383,41 @@ function App() {
       <main>
         <div className='main-superior'>
           <h2 className='main-h2'>Panel General</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Embalse</span>
-            {/* Aquí se podría colocar un selector de embalse para cambiar el panel general */}
+          <div className="embalse-selector-wrap">
+            <label htmlFor="selector-embalse" className='embalse-selector-label'>
+              Embalse
+            </label>
+            <select
+              id="selector-embalse"
+              className="embalse-selector"
+              value={embalseSeleccionadoId}
+              onChange={(e) => setEmbalseSeleccionadoId(e.target.value)}
+              disabled={cargandoEmbalses || embalses.length === 0}
+            >
+              {cargandoEmbalses && <option value="">Cargando...</option>}
+              {!cargandoEmbalses && embalses.length === 0 && <option value="">Sin embalses</option>}
+              {embalses.map((embalse) => (
+                <option key={embalse.id} value={String(embalse.id)}>
+                  {embalse.nombre}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
+
+        {errorEmbalses && (
+          <div className="embalse-error-banner"> 
+            {errorEmbalses}
+          </div>
+        )}
 
         <div className="app-dashboard-grid">
 
           {/* 1. Infografía */}
           <EmbalseInfografia
-            datoActual={datoActualSeguro}
-            theme={theme}
-            embalseNombre={embalseSeguro.nombre}
-            compuertas={embalseSeguro.compuertas}
+            datoActual={datoActual}
+            embalseNombre={embalseSeleccionado?.nombre || 'Embalse'}
+            compuertas={embalseSeleccionado?.compuertas || []}
           />
 
           {/* 2. Nivel Actual del Agua */}
@@ -161,13 +427,13 @@ function App() {
               <div>
                 <p className="nivel-agua-label">Porcentaje:</p>
                 <p className="nivel-agua-value">
-                 {datoActualSeguro.porcentaje} <span className="nivel-agua-unit">%</span>
+                 {datoActual.porcentaje} <span className="nivel-agua-unit">%</span>
                 </p>
               </div>
               <div>
                 <p className="nivel-agua-label">Volumen:</p>
                 <p className="nivel-agua-value">
-                  {datoActualSeguro.volumenActualHm3} <span className="nivel-agua-unit">hm³</span>
+                  {datoActual.volumen} <span className="nivel-agua-unit">hm³</span>
                 </p>
               </div>
             </div>
@@ -182,7 +448,7 @@ function App() {
                   <Thermometer size={25} className="sensor-icon" />
                   Temperatura
                 </span>
-                <span className="sensor-value">{datoActualSeguro.temperatura} °C</span>
+                <span className="sensor-value">{datoActual.temperatura} °C</span>
               </li>
 
               <li className="sensor-item">
@@ -190,7 +456,7 @@ function App() {
                   <CloudRain size={25} className="sensor-icon" />
                   Precipitación
                 </span>
-                <span className="sensor-value">{datoActualSeguro.precipitacion} l/m²</span>
+                <span className="sensor-value">{datoActual.precipitacion} l/m²</span>
               </li>
 
               <li className="sensor-item">
@@ -198,7 +464,7 @@ function App() {
                   <Waves size={25} className="sensor-icon" />
                   Caudal Entrada
                 </span>
-                <span className="sensor-value">{datoActualSeguro.caudalEntrada} m³/s</span>
+                <span className="sensor-value">{datoActual.caudalEntrada} m³/s</span>
               </li>
 
               <li className="sensor-item">
@@ -206,64 +472,18 @@ function App() {
                   <ArrowRightFromLine size={25} className="sensor-icon" />
                   Caudal Salida
                 </span>
-                <span className="sensor-value">{datoActualSeguro.caudalSalida} m³/s</span>
+                <span className="sensor-value">{datoActual.caudalSalida} m³/s</span>
               </li>
             </ul>
           </div>
 
           {/* 4. Historico de Evolución */}
-          <div className="historico-card">
-            <div className="historico-header">
-              <h3 className="historico-title">Nivel Agua Historico</h3>
-            </div>
-
-            <div className="historico-chart">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={datosHistoricos}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme.border} vertical={false} />
-                  <XAxis
-                    dataKey="timestamp"
-                    type="number"
-                    domain={['dataMin', 'dataMax']}
-                    stroke={theme.muted}
-                    tickCount={6}
-                    minTickGap={24}
-                    interval="preserveStartEnd"
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => {
-                      const fecha = new Date(value)
-                      return fecha.toLocaleTimeString('es-ES', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    }}
-                  />
-                  <YAxis
-                    domain={dominioNivelHistorico}
-                    stroke={theme.muted}
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => value.toFixed(1)}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: theme.panel,
-                      borderColor: theme.border
-                    }}
-                    labelFormatter={(value) => new Date(value).toLocaleString('es-ES')}
-                    formatter={(value) => [`${Number(value).toFixed(2)} msnm`, 'Nivel']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="nivel"
-                    stroke="#38bdf8"
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: theme.panel, stroke: '#38bdf8' }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          <PanelNivelAguaHistorico
+            cotaMin={datoActual.cotaMaximaM ?? 960}
+            cotaMax={datoActual.cotaMinimaM ?? 900}
+            embalseId={embalseSeleccionadoId}
+            refreshToken={refreshHitoricoToken}
+          />
 
           {/* 5. Alertas/Decisiones */}
           <div className="alertas-card">
@@ -291,7 +511,7 @@ function App() {
 
       <footer>
         <div className="footer-izquierda">
-          <p className="footer-arriba">Última actualización de datos:</p>
+          <p className="footer-arriba">Última actualización de datos: {datoActual.timestamp}</p>
           <p className="footer-abajo">GestEmb v1.0.0-beta</p>
         </div>
         <div className="footer-derecha">

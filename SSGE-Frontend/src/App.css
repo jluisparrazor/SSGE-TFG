@@ -357,6 +357,53 @@ main{
   font-family: var(--mono);
 }
 
+.embalse-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.embalse-selector-label {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.embalse-selector {
+  background-color: #0f172a;
+  color: var(--app-text);
+  border: 1px solid var(--app-border);
+  padding: 0.45rem 0.7rem;
+  border-radius: 10px;
+  min-width: 230px;
+}
+
+.embalse-selector:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.embalse-error-banner {
+  margin-bottom: 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #dc2626;
+  background-color: #450a0a;
+  color: #fca5a5;
+}
+
+@media (max-width: 770px) {
+  .embalse-selector-wrap {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .embalse-selector {
+    min-width: 0;
+    width: 100%;
+    max-width: 320px;
+  }
+}
+
 .historico-card {
   grid-column: 1;
   grid-row: 3;
