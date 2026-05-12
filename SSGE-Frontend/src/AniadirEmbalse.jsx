@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState, useLayoutEffect} from "react";
-import { Dam, Eye, Gauge, Thermometer, Wind, X} from "lucide-react";
-import './AniadirEmbalse.css';
+import { Dam, Eye, Gauge, Thermometer, Wind, X, CheckCircle} from "lucide-react";
+import "./styles/AniadirEmbalse.css";
 import AppHeader from "./components/AppHeader.jsx";
 import AppFooter from "./components/AppFooter.jsx";
 import EmbalseInfografia from "./components/EmbalseInfografia.jsx";
@@ -45,6 +45,7 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         ]
     });
 
+    const [modalExito, setModalExito] = useState(false);
     const [catalogoSaih, setCatalogoSaih] = useState(CATALOGO_SAIH_BASE);
     const [guardando, setGuardando] = useState(false);
     const [mensajeEstado, setMensajeEstado] = useState("");
@@ -72,6 +73,15 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         
         cargarCatalogoSaih();
     }, []);
+
+    useEffect(() => {
+        if (modalExito) {
+            const timer = setTimeout(() => {
+                setModalExito(false);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [modalExito]);
 
     useEffect(() => {
         setMenuAbierto(false);
@@ -167,6 +177,86 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         }));
     };
 
+    const handleGuardarEmbalse = async () => {
+        setGuardando(true);
+        setMensajeEstado("");
+        setErrorEstado("");
+
+        try {
+            const payload = {
+                nombre: formData.nombre.trim(),
+                capacidadHm3: parseNumero(formData.capacidadTotal, null),
+                cotaMaximaM: parseNumero(formData.cotaSuperior, null),
+                cotaMinimaM: parseNumero(formData.cotaInferior, null),
+                saihEstacionCodigo: formData.saihEstacion || null,
+                saihIdPunto: estacionActiva?.id_punto || null,
+                sensores: formData.sensores.map((sensor) => ({
+                    tipo: sensor.tipo,
+                    valorActual: parseNumero(sensor.altura, 0)
+                })),
+                compuertas: formData.compuertas.map((compuerta, indice) => ({
+                    nombre: `Compuerta ${indice + 1}`,
+                    cotaTomaM: parseNumero(compuerta.altura, null),
+                    estadoAperturaPorcentaje: 0,
+                    caudalSalidaActual: parseNumero(compuerta.maximoCaudal, 0)
+                })),
+                senalesAsignadas: formData.saihSenales.map((senal) => ({
+                    codigo : senal.id_sensor,
+                    nombre: senal.nombre_sensor
+                }))
+            };
+
+            if (!payload.nombre) {
+                throw new Error("El nombre del embalse es obligatorio");
+            }
+
+            if (!Number.isFinite(payload.capacidadHm3) || !Number.isFinite(payload.cotaMaximaM) || !Number.isFinite(payload.cotaMinimaM)) {
+                throw new Error('Debes completar capacidad y cotas con valores válidos');
+            }
+
+            if (payload.cotaMinimaM >= payload.cotaMaximaM) {
+                throw new Error('La cota inferior debe ser menor que la cota superior');
+            }
+
+            const respuesta = await fetch('http://localhost:3000/api/embalses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await respuesta.json();
+
+            if (!respuesta.ok) {
+                throw new Error(data?.message || 'Error al guardar el embalse');
+            }
+
+            setMensajeEstado("Embalse guardado correctamente");
+            setFormData({
+                nombre: "",
+                capacidadTotal: "",
+                cotaSuperior: "",
+                cotaInferior: "",
+                saihEstacion: "",
+                saihSenales: [],
+                numeroCompuertas: 2,
+                compuertas: [
+                    {id: 1, altura: "850", maximoCaudal: ""},
+                    {id: 2, altura: "830", maximoCaudal: ""}
+                ],
+                sensores: [
+                    { id: 1, tipo: 'Oxígeno', nombre: 'Sensor de Oxígeno', altura: '' },
+                ]
+            });
+        } catch (error) {
+            setErrorEstado(error.message || "Error al guardar el embalse");
+        } finally {
+            setGuardando(false);
+        }
+
+    };
+
     const toggleSenalSaih = (senal) => {
         setFormData((prev) => {
             const existe = prev.saihSenales.some((s) => s.id_sensor === senal.id_sensor);
@@ -200,8 +290,7 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         }
         return null;
     };
-
-    
+  
     const parseNumero = (valor, fallback = 0) => {
         if (valor === null || valor === undefined || valor === '') return fallback;
         const n = parseFloat(String(valor).replace(',', '.'));
@@ -238,6 +327,8 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
     const anadirSensor = () => {
         const nuevoId = formData.sensores.length + 1;
         const inicial = SENSOR_OPTIONS[0];
+
+        setModalExito(true);
 
         setFormData({
             ...formData,
@@ -292,11 +383,27 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
     return (
         <div className='App'>
             <AppHeader />
+                {/* Modal de éxito */}
+                {modalExito && (
+                    <div className="modal-overlay" onClick={() => setModalExito(false)}>
+                        <div className="modal-contenido" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-icono">
+                                <CheckCircle size={56}  className="modal-check-icon"/>
+                            </div>
+                            <h2 className="modal-titulo">¡Embalse guardado!</h2>
+                            <p className="modal-texto">El embalse se ha creado correctamente en el sistema.</p>
+                            <button className="modal-boton" onClick={() => setModalExito(false)}>
+                                Continuar
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <main >
                     <div className="main-superior">
                         <h2 className='main-h2'>Añadir Embalse</h2>
                         <div className="embalse-selector-wrap">
-                            <button disabled={guardando} /* onClick={handleGuardarEmbalse} */ className="btn-guardar">
+                            <button disabled={guardando} onClick={handleGuardarEmbalse} className="btn-guardar">
                                 {guardando ? 'Guardando...' : 'Guardar Embalse'}
                             </button>
                         </div>
@@ -565,7 +672,7 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
 
                         {/* BOTÓN GUARDAR INFERIOR */}
                         <div className="anadir-embalse-footer-btn">
-                            <button disabled={guardando} /* onClick={handleGuardarEmbalse}  */className="btn-guardar-footer">
+                            <button disabled={guardando} onClick={handleGuardarEmbalse}  className="btn-guardar-footer">
                                 {guardando ? 'Guardando...' : 'Guardar Embalse'}
                             </button>
                         </div>

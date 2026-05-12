@@ -1,4 +1,4 @@
-import './EmbalseInfografia.css';
+import "./styles/EmbalseInfografia.css";
 import { TriangleAlert, CheckCircle } from 'lucide-react';
 
 function EmbalseInfografia({ datoActual = {},

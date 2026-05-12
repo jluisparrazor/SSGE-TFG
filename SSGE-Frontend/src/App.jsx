@@ -7,7 +7,7 @@ import EmbalseInfografia from './components/EmbalseInfografia'
 import PanelNivelAguaHistorico from './components/PanelNivelAguaHistorico';
 import AppHeader from './components/AppHeader';
 import AppFooter from './components/AppFooter';
-import './App.css'
+import "./styles/App.css";
 
 const socket = io('http://localhost:3000');
 

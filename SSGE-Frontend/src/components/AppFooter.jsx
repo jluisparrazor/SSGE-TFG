@@ -1,5 +1,5 @@
 import React from "react";
-import './AppFooter.css';
+import "./styles/AppFooter.css";
 
 function AppFooter({ lastUpdate = "" }) {
   return (

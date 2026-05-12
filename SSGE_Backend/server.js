@@ -8,6 +8,7 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
 const MedicionRepository = require('./src/services/MedionRepository');
+const EmbalseRepository = require('./src/services/EmbalseRepository');
 const { time } = require('console');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -79,6 +80,16 @@ app.get('/api/embalses', async (_req, res) => {
 	} catch (error) {
 		console.error('Error en /api/embalses:', error.message);
     	res.status(500).json({ error: error.message || "Error DB" });
+	}
+});
+
+app.post('/api/embalses', async (req, res) => {
+	try {
+		const embalseCreado = await EmbalseRepository.guardar(req.body);
+		res.status(201).json(embalseCreado);
+	} catch (error) {
+		console.error('Error en POST /api/embalses:', error.message);
+		res.status(400).json({ error: error.message || "Error al crear embalse" });
 	}
 });
 

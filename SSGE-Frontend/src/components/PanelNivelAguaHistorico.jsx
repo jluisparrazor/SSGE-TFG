@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LineChart, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Line } from 'recharts';
 
-import './PanelNivelAguaHistorico.css';
+import "./styles/PanelNivelAguaHistorico.css";
 
 function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
     const [datosHistoricos, setDatosHistoricos] = useState([]);

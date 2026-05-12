@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import './AppHeader.css';
+import "./styles/AppHeader.css";
 
 function AppHeader() {
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
