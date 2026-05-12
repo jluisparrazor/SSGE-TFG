@@ -5,6 +5,8 @@ import {LineChart, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Li
 
 import EmbalseInfografia from './components/EmbalseInfografia'
 import PanelNivelAguaHistorico from './components/PanelNivelAguaHistorico';
+import AppHeader from './components/AppHeader';
+import AppFooter from './components/AppFooter';
 import './App.css'
 
 const socket = io('http://localhost:3000');
@@ -336,49 +338,8 @@ function App() {
 
   return (
     <div className="App">
-      <header className="app-header">
-        <nav className="app-nav">
-          <button className="menu-btn" aria-label="Abrir menu">
-            <span className="menu-icon"></span>
-          </button>
 
-          <div className="brand">
-            <h1 className="app-title">SSGE</h1>
-            <p className="app-subtitle">Sistema de Simulación y Gestión de Embalses</p>
-          </div>
-
-          <div className="user-menu">
-            <button
-              type="button"
-              className="user-block user-trigger"
-              aria-label="Abrir menu de usuario"
-              aria-haspopup="menu"
-              aria-expanded={menuUsuarioAbierto}
-              onClick={toggleMenuUsuario}
-            >
-              <div className="user-avatar" aria-hidden="true">JL</div>
-              <div className="user-info">
-                <span className="user-name">Jose Luis</span>
-                <span className="user-role">Operador</span>
-              </div>
-            </button>
-
-            {menuUsuarioAbierto && (
-              <div className="user-dropdown" role="menu" aria-label="Menu de usuario">
-                <button type="button" className="user-dropdown-item" onClick={() => { window.location.href = '/perfil'; }}>
-                  Mi perfil
-                </button>
-                <button type="button" className="user-dropdown-item" onClick={() => { window.location.href = '/ajustes'; }}>
-                  Ajustes
-                </button>
-                <button type="button" className="user-dropdown-item user-dropdown-item--danger">
-                  Cerrar sesion
-                </button>
-              </div>
-            )}
-          </div>
-        </nav>
-      </header>
+      <AppHeader />
 
       <main>
         <div className='main-superior'>
@@ -509,16 +470,7 @@ function App() {
         </div>
       </main>
 
-      <footer>
-        <div className="footer-izquierda">
-          <p className="footer-arriba">Última actualización de datos: {datoActual.timestamp}</p>
-          <p className="footer-abajo">GestEmb v1.0.0-beta</p>
-        </div>
-        <div className="footer-derecha">
-          <p className="footer-arriba">Trabajo de Fin de Grado - Ingeniería Informática</p>
-          <p className="footer-abajo">Desarrollado por José Luis Parra Azor</p>
-        </div>
-      </footer>
+      <AppFooter lastUpdate={datoActual.timestamp} />
     </div>
   )
 }
