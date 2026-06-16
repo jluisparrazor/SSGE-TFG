@@ -1,0 +1,11 @@
+{
+  "name": "ssge-tfg",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"cd /home/jluisparrazor/SSGE-TFG/SSGE_Backend && node server.js\" \"cd /home/jluisparrazor/Escritorio/SSGE-TFG/SSGE-Scraper && node produccion.js\" \"cd /home/jluisparrazor/SSGE-TFG/SSGE-Frontend && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
