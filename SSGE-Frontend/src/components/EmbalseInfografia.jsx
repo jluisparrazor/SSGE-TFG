@@ -48,6 +48,11 @@ function EmbalseInfografia({ datoActual = {},
     return Number.isFinite(n) ? n : null;
   };
 
+  const formatearCaudal = (valor) => {
+    const caudal = normalizarNumero(valor) ?? 0;
+    return caudal.toFixed(3);
+  };
+
   const resolverCotaCompuerta = (compuerta, idx) => {
     const cotaExplicita = normalizarNumero(compuerta?.altura);
     if (cotaExplicita !== null) return cotaExplicita;
@@ -63,7 +68,7 @@ function EmbalseInfografia({ datoActual = {},
   const resolverCaudalCompuerta = (compuerta) => {
     const caudalFormulario = normalizarNumero(compuerta?.maximoCaudal);
     if (caudalFormulario !== null) return caudalFormulario;
-
+    
     const caudalBD = normalizarNumero(compuerta?.caudalSalidaActual);
     if (caudalBD !== null) return caudalBD;
 
@@ -71,6 +76,11 @@ function EmbalseInfografia({ datoActual = {},
   };
 
   const nivelActual = normalizarNumero(datoActual?.nivel);
+  const caudalSalidaTotal = normalizarNumero(datoActual?.caudalSalida) ?? 0;
+  const compuertasSumergidas = compuertas.reduce((total, compuerta, idx) => {
+    const cotaCompuerta = resolverCotaCompuerta(compuerta, idx);
+    return nivelActual !== null && nivelActual >= cotaCompuerta ? total + 1 : total;
+  }, 0);
   const enAlerta = Number(datoActual?.porcentaje || 0) > 95;
 
   const TERRENOS_EMBALSE = [
@@ -202,7 +212,7 @@ function EmbalseInfografia({ datoActual = {},
             </g>
             <rect className="embalse-caudal-label-bg" x="0" y="-12" width="130" height="20" rx="4" />
             <text className="embalse-caudal-label" x="65" y="2">
-              Entrada: {datoActual.caudalEntrada || 0} m³/s
+              Entrada: {formatearCaudal(datoActual.caudalEntrada)} m³/s
             </text>
           </g>
 
@@ -211,10 +221,11 @@ function EmbalseInfografia({ datoActual = {},
             {compuertas.length > 0 ? (
               compuertas.map((compuerta, idx) => {
                 const cotaCompuerta = resolverCotaCompuerta(compuerta, idx);
-                const caudalSolicitado = resolverCaudalCompuerta(compuerta);
                 // Si el nivel no alcanza la cota de la toma, no puede haber salida por esa compuerta.
                 const tomaSumergida = nivelActual !== null && nivelActual >= cotaCompuerta;
-                const caudal = tomaSumergida ? caudalSolicitado : 0;
+                const caudal = tomaSumergida && compuertasSumergidas > 0
+                  ? caudalSalidaTotal / compuertasSumergidas
+                  : 0;
                 const ySalida = calcularPosicionY(cotaCompuerta); // Calcular Y según la cota
                 
                 return (
@@ -227,9 +238,9 @@ function EmbalseInfografia({ datoActual = {},
                       </path>
                       <polygon className="embalse-flecha-agua" points="760,-6 772,0 760,6" />
                     </g>
-                    <rect className="embalse-caudal-label-bg" x="520" y="-30" width="125" height="20" rx="4" />
+                    <rect className="embalse-caudal-label-bg" x="485" y="-31" width="190" height="21" rx="4" />
                     <text className="embalse-caudal-label" x="582" y="-15">
-                      Salida {idx + 1}: {caudal || 0} m³/s
+                      Salida {idx + 1}: {formatearCaudal(caudal)} m³/s
                     </text>
                   </g>
                 );
@@ -245,9 +256,9 @@ function EmbalseInfografia({ datoActual = {},
                   </path>
                   <polygon className="embalse-flecha-agua" points="760,-6 772,0 760,6" />
                 </g>
-                <rect className="embalse-caudal-label-bg" x="520" y="-30" width="125" height="20" rx="4" />
+                <rect className="embalse-caudal-label-bg" x="520" y="-30" width="135" height="20" rx="4" />
                 <text className="embalse-caudal-label" x="582" y="-15">
-                  Salida: {datoActual.caudalSalida || 0} m³/s
+                  Salida: {formatearCaudal(datoActual.caudalSalida)} m³/s
                 </text>
               </g>
             )}

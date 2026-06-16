@@ -12,7 +12,7 @@
   min-height: 72px;
   padding: 0 1.25rem;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 1rem;
   position: relative;
@@ -67,6 +67,36 @@ pointer-events: auto;
 
 .brand {
   min-width: 0;
+}
+
+.theme-toggle-btn {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: var(--app-panel);
+  color: var(--app-text);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+  transform: translateY(-1px);
+  border-color: #22d3ee;
+  background: var(--app-panel-2);
+}
+
+.theme-toggle-btn:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+.theme-toggle-text {
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 .app-title,
@@ -255,7 +285,8 @@ pointer-events: auto;
 
 @media (max-width: 770px) {
   .app-nav {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 0.65rem;
   }
 
   .user-block {
@@ -277,6 +308,14 @@ pointer-events: auto;
   .user-dropdown {
     right: 0;
     min-width: 160px;
+  }
+
+  .theme-toggle-btn {
+    padding: 0.45rem 0.65rem;
+  }
+
+  .theme-toggle-text {
+    display: none;
   }
 
   .app-subtitle {

@@ -381,61 +381,63 @@ function App() {
             compuertas={embalseSeleccionado?.compuertas || []}
           />
 
-          {/* 2. Nivel Actual del Agua */}
-          <div className="nivel-agua-card">
-            <h3 className="nivel-agua-title">Nivel Actual del Agua</h3>
-            <div className="nivel-agua-content">
-              <div>
-                <p className="nivel-agua-label">Porcentaje:</p>
-                <p className="nivel-agua-value">
-                 {datoActual.porcentaje} <span className="nivel-agua-unit">%</span>
-                </p>
-              </div>
-              <div>
-                <p className="nivel-agua-label">Volumen:</p>
-                <p className="nivel-agua-value">
-                  {datoActual.volumen} <span className="nivel-agua-unit">hm³</span>
-                </p>
+          <div className="app-dashboard-right-stack">
+            {/* 2. Nivel Actual del Agua */}
+            <div className="nivel-agua-card">
+              <h3 className="nivel-agua-title">Nivel Actual del Agua</h3>
+              <div className="nivel-agua-content">
+                <div>
+                  <p className="nivel-agua-label">Porcentaje:</p>
+                  <p className="nivel-agua-value">
+                  {datoActual.porcentaje} <span className="nivel-agua-unit">%</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="nivel-agua-label">Volumen:</p>
+                  <p className="nivel-agua-value">
+                    {datoActual.volumen} <span className="nivel-agua-unit">hm³</span>
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* 3. Sensores */}
-          <div className="sensores-card">
-            <h3 className="sensores-title">Sensores en Tiempo Real</h3>
-            <ul className="sensores-list">
-              <li className="sensor-item">
-                <span className="sensor-label">
-                  <Thermometer size={25} className="sensor-icon" />
-                  Temperatura
-                </span>
-                <span className="sensor-value">{datoActual.temperatura} °C</span>
-              </li>
+            {/* 3. Sensores */}
+            <div className="sensores-card">
+              <h3 className="sensores-title">Sensores en Tiempo Real</h3>
+              <ul className="sensores-list">
+                <li className="sensor-item">
+                  <span className="sensor-label">
+                    <Thermometer size={25} className="sensor-icon" />
+                    Temperatura
+                  </span>
+                  <span className="sensor-value">{datoActual.temperatura} °C</span>
+                </li>
 
-              <li className="sensor-item">
-                <span className="sensor-label">
-                  <CloudRain size={25} className="sensor-icon" />
-                  Precipitación
-                </span>
-                <span className="sensor-value">{datoActual.precipitacion} l/m²</span>
-              </li>
+                <li className="sensor-item">
+                  <span className="sensor-label">
+                    <CloudRain size={25} className="sensor-icon" />
+                    Precipitación
+                  </span>
+                  <span className="sensor-value">{datoActual.precipitacion} l/m²</span>
+                </li>
 
-              <li className="sensor-item">
-                <span className="sensor-label">
-                  <Waves size={25} className="sensor-icon" />
-                  Caudal Entrada
-                </span>
-                <span className="sensor-value">{datoActual.caudalEntrada} m³/s</span>
-              </li>
+                <li className="sensor-item">
+                  <span className="sensor-label">
+                    <Waves size={25} className="sensor-icon" />
+                    Caudal Entrada
+                  </span>
+                  <span className="sensor-value">{datoActual.caudalEntrada} m³/s</span>
+                </li>
 
-              <li className="sensor-item">
-                <span className="sensor-label">
-                  <ArrowRightFromLine size={25} className="sensor-icon" />
-                  Caudal Salida
-                </span>
-                <span className="sensor-value">{datoActual.caudalSalida} m³/s</span>
-              </li>
-            </ul>
+                <li className="sensor-item">
+                  <span className="sensor-label">
+                    <ArrowRightFromLine size={25} className="sensor-icon" />
+                    Caudal Salida
+                  </span>
+                  <span className="sensor-value">{datoActual.caudalSalida} m³/s</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           {/* 4. Historico de Evolución */}

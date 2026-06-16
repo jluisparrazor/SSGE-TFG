@@ -24,6 +24,7 @@ model Embalse {
   cotaMinimaM     Float    @default(0)// Altura mínima por seguridad
   saihEstacionCodigo String?
   saihIdPunto      String?
+  eliminado       Boolean  @default(false)
   
   // Relaciones (Un embalse tiene muchos sensores, compuertas e historial)
   sensores        Sensor[]

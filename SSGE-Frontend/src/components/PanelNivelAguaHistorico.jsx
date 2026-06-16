@@ -5,7 +5,7 @@ import "./styles/PanelNivelAguaHistorico.css";
 
 function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
     const [datosHistoricos, setDatosHistoricos] = useState([]);
-    const [rangoGrafica, setRangoGrafica] = useState('dia');
+    const [rangoGrafica, setRangoGrafica] = useState('mes');
 
     const parseDateStr = (dateStr) => {
         if (!dateStr || !dateStr.includes('-')) return 0;
@@ -110,9 +110,9 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
         const minVolumen = Math.min(...volumenesHistoricos);
         const rangoReal = maxVolumen - minVolumen;
         
-        const factorMargen = rangoGrafica === 'dia' ? 0.2 : 0.15;
-        const margenMinimo = 0.5;
-        const ventanaMinima = rangoGrafica === 'dia' ? 2 : 4;
+        const factorMargen = rangoGrafica === 'dia' ? 0.1 : 0.15;
+        const margenMinimo = rangoGrafica === 'dia' ? 0.03 : 0.5;
+        const ventanaMinima = rangoGrafica === 'dia' ? 0.3 : 4;
         const margen = Math.max(margenMinimo, rangoReal * factorMargen);
 
         let minDominio = Math.max(0, minVolumen - margen);
@@ -191,7 +191,7 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
                         <Tooltip
                             contentStyle={{ backgroundColor: 'var(--panel-bg)', borderColor: 'var(--border-color)' }}
                             labelFormatter={(value) => new Date(value).toLocaleString('es-ES')}
-                            formatter={(value) => [`${Number(value).toFixed(2)} hm³`, 'Volumen']}
+                            formatter={(value) => [`${Number(value).toFixed(3)} hm³`, 'Volumen']}
                         />
                         <Line
                             type="monotone"

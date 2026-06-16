@@ -1,0 +1,501 @@
+/* src/styles/Simulacion.css */
+.app-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Forzar monoespaciado tabular para números y campos del bloque Simulacion */
+.form-card-input,
+select.form-card-input,
+.slider-current-box,
+.slider-min,
+.slider-max,
+.sensor-value,
+.nivel-agua-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-feature-settings: "tnum" 1;
+  -moz-font-feature-settings: "tnum" 1;
+  font-feature-settings: "tnum";
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .app-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Forzar que selects/inputs ocupen todo el ancho dentro de las cards */
+.form-card .form-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-card .form-card-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Range y otros inputs ocupan 100% */
+.form-card input[type="range"],
+.form-card input[type="number"],
+.form-card input[type="text"],
+.form-card .form-card-input input[type="number"] {
+  width: 100%;
+}
+
+/* Ajuste menor de etiquetas */
+.form-card .form-card-label {
+  margin-bottom: 0.35rem;
+}
+
+/* Intento de estilado del listado de opciones (no soportado en todos los browsers) */
+select.form-card-input option,
+.embalse-selector option {
+  background-color: var(--app-panel-2);
+  color: var(--app-text);
+}
+
+/* --- Slider: ajuste final para apariencia limpia --- */
+.slider-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem; /* mantiene el fondo azul del contenedor */
+  box-sizing: border-box;
+}
+
+/* Mismo estilo que la barra de caudal de salida */
+.slider-input {
+  width: 100%;
+  margin: 0;
+  accent-color: #06b6d4;
+}
+
+/* Pie: 0 - caja% - 100 (caja centrada debajo de la barra) */
+.slider-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 4px;
+}
+
+.slider-min,
+.slider-max {
+  color: var(--app-muted);
+  font-size: 0.9rem;
+}
+.slider-current-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--app-text);
+  font-weight: 700;
+}
+
+.form-card-title,
+.sensores-title {
+  margin: 0 0 1rem 0;
+  color: var(--app-accent);
+}
+
+.form-card--inicio,
+.form-card--compuertas {
+  height: clamp(460px, 62vh, 620px);
+}
+
+.form-card--compuertas {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.form-card--compuertas .compuertas-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.sim-sensores-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 0;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  height: clamp(460px, 62vh, 620px);
+  overflow: hidden;
+}
+
+.sim-sensores-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 6px 0 0;
+  background: transparent;
+  border: none;
+  flex: 1 1 auto;
+}
+
+.sensores-empty {
+  color: var(--app-muted);
+  padding: 0.5rem 0;
+}
+
+.compuertas-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.sensor-input {
+  width: 100%;
+  max-width: 180px;
+  padding: 0.5rem 0.65rem;
+}
+
+.sensor-send-btn {
+  align-self: center;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+}
+
+.compuertas-empty {
+  color: var(--app-muted);
+  padding: 0.5rem 0;
+}
+
+.compuerta-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--app-panel-2);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  padding: 0.85rem;
+}
+
+.compuerta-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.compuerta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.compuerta-icon-svg {
+  color: #67e8f9;
+}
+
+.compuerta-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.compuerta-badge {
+  margin-left: auto;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.compuerta-badge--open {
+  background: rgba(22, 163, 74, 0.18);
+  color: #86efac;
+  border: 1px solid rgba(22, 163, 74, 0.35);
+}
+
+.compuerta-badge--closed {
+  background: rgba(220, 38, 38, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+}
+
+.sensor-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.sensor-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #67e8f9;
+}
+
+.sensor-icon-svg {
+  color: #67e8f9;
+}
+
+.sensor-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.sensor-label {
+  color: var(--app-text);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.sensor-subtitle,
+.sensor-value-label {
+  color: var(--app-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.sensor-value-box {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.sensor-value-label {
+  align-self: flex-start;
+}
+
+.sensor-input {
+  width: 100%;
+  max-width: 180px;
+  padding: 0.5rem 0.65rem;
+}
+
+.sensor-send-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+}
+
+.sensor-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-feature-settings: "tnum" 1;
+  -moz-font-feature-settings: "tnum" 1;
+  font-feature-settings: "tnum";
+  color: var(--app-text);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.compuerta-contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.compuerta-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.compuerta-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.compuerta-input--static {
+  opacity: 0.95;
+  cursor: default;
+}
+
+.compuerta-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.compuerta-input-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.compuerta-input-toggle .compuerta-switch {
+  margin: 0;
+  align-self: flex-start;
+}
+
+.compuerta-input-toggle .form-card-label {
+  text-align: left;
+  align-self: flex-start;
+}
+
+.compuerta-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--app-muted);
+  font-size: 0.9rem;
+}
+
+.compuerta-switch-control {
+  position: relative;
+  width: 58px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.compuerta-switch-control input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.compuerta-switch-slider {
+  position: absolute;
+  inset: 0;
+  background: #334155;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  transition: 0.2s ease;
+}
+
+.compuerta-switch-slider::before {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transition: 0.2s ease;
+}
+
+.compuerta-switch-control input:checked + .compuerta-switch-slider {
+  background: #06b6d4;
+}
+
+.compuerta-switch-control input:checked + .compuerta-switch-slider::before {
+  transform: translateX(28px);
+  background: #001018;
+}
+
+.compuerta-resumen {
+  color: var(--app-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.compuerta-cota-text {
+  color: var(--app-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.compuerta-send-btn {
+  align-self: center;
+}
+
+.compuerta-campo .form-card-label,
+.compuerta-range-labels,
+.compuerta-cota-text,
+.compuerta-resumen {
+  color: var(--app-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.compuerta-num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-feature-settings: "tnum" 1;
+  -moz-font-feature-settings: "tnum" 1;
+  font-feature-settings: "tnum";
+}
+
+@media (max-width: 900px) {
+  .form-card--inicio,
+  .form-card--compuertas {
+    height: auto;
+  }
+
+  .form-card--compuertas .compuertas-grid {
+    overflow-y: visible;
+    padding-right: 0;
+  }
+
+  .compuertas-grid,
+  .compuerta-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .sim-sensores-list {
+    grid-template-columns: 1fr;
+  }
+
+  .compuerta-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .compuerta-badge {
+    margin-left: 0;
+  }
+
+  .sim-sensores-list {
+    overflow-y: visible;
+    padding-right: 0;
+  }
+
+  .sensor-item {
+    width: 100%;
+  }
+
+  .sensor-value-box {
+    align-items: stretch;
+    padding-left: 0;
+  }
+}
+
+.compuerta-range {
+  width: 100%;
+  margin: 0;
+  accent-color: #06b6d4;
+}
+
+.compuerta-range:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.compuerta-range-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--app-muted);
+  margin-top: 0.2rem;
+}
+

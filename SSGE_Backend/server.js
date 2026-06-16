@@ -65,17 +65,7 @@ io.on('connection', (socket) => {
 
 app.get('/api/embalses', async (_req, res) => {
 	try {
-		const embalses = await prisma.embalse.findMany({
-			include: {
-				sensores: true,
-				compuertas: true,
-				senalesAsignadas: {
-					include: {
-						senal: true,
-					},
-				},
-			},
-		});
+		const embalses = await EmbalseRepository.obtenerTodos();
 		res.json(embalses);
 	} catch (error) {
 		console.error('Error en /api/embalses:', error.message);
@@ -109,8 +99,8 @@ app.get('/api/mediciones', async (req, res) => {
 
 		// Obtenemos el embalse base (el especificado o el primero) para validar su existencia y obtener sus cotas
 		const embalseBase = embalseIdQuery
-			? await prisma.embalse.findUnique({
-				where: { id: embalseIdQuery },
+			? await prisma.embalse.findFirst({
+				where: { id: embalseIdQuery, eliminado: false },
 				select: {
 					id: true,
 					cotaMaximaM: true,
@@ -118,6 +108,7 @@ app.get('/api/mediciones', async (req, res) => {
 				}
 				})
 			: await prisma.embalse.findFirst({
+				where: { eliminado: false },
 				orderBy: { id: 'asc' },
 				select: {
 					id: true,
@@ -198,6 +189,73 @@ app.get('/api/historial-simulacion', async (req, res) => {
     res.status(500).json({ error: error.message || "Error DB" });
   }
 });
+
+// Endpoint para obtener un embalse por su ID, incluyendo sensores, compuertas y señales asignadas
+app.get('/api/embalses/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'id inválido' });
+    }
+
+		const embalse = await EmbalseRepository.obtenerPorId(id);
+
+    if (!embalse) {
+      return res.status(404).json({ error: 'Embalse no encontrado' });
+    }
+
+    res.json(embalse);
+  } catch (error) {
+    console.error('Error en GET /api/embalses/:id:', error.message);
+    res.status(500).json({ error: error.message || 'Error DB' });
+  }
+});
+
+// Endpoint para actualizar un embalse por su ID
+app.put('/api/embalses/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'id inválido' });
+    }
+
+    const actualizado = await EmbalseRepository.actualizar(id, req.body);
+    res.json(actualizado);
+  } catch (error) {
+    console.error('Error en PUT /api/embalses/:id:', error.message);
+    const msg = error?.message || 'Error al actualizar embalse';
+
+    if (msg.toLowerCase().includes('no existe')) {
+      return res.status(404).json({ error: msg });
+    }
+
+    res.status(400).json({ error: msg });
+  }
+});
+
+// DELETE /api/embalses/:id - Borrado lógico
+app.delete('/api/embalses/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        if (!id || isNaN(id)) {
+            return res.status(400).json({ error: 'ID inválido' });
+        }
+
+        const embalseEliminado = await EmbalseRepository.eliminarLogico(id);
+        
+        res.json({
+            message: 'Embalse eliminado correctamente',
+            embalse: embalseEliminado
+        });
+    } catch (error) {
+        console.error('Error en DELETE /api/embalses/:id:', error);
+        res.status(400).json({ 
+            message: error.message || 'Error al eliminar embalse',
+            error: error.message 
+        });
+    }
+});
 	
 
 io.on('connection', (socket) => {
@@ -233,19 +291,33 @@ async function start() {
 }
 
 async function shutdown(signal) {
-	console.log(`Recibida señal ${signal}. Cerrando servidor...`);
+    console.log(`Recibida señal ${signal}. Cerrando servidor...`);
 
-	server.close(async () => {
-		try {
-			await prisma.$disconnect();
-			await pool.end();
-			console.log('Recursos cerrados correctamente');
-			process.exit(0);
-		} catch (error) {
-			console.error('Error cerrando recursos:', error);
-			process.exit(1);
-		}
-	});
+    const forceExit = setTimeout(() => {
+        console.warn('Cierre forzado tras timeout');
+        process.exit(1);
+    }, 5000);
+
+    try {
+        io.close();
+        server.close(async () => {
+            try {
+                await prisma.$disconnect();
+                await pool.end();
+                clearTimeout(forceExit);
+                console.log('Recursos cerrados correctamente');
+                process.exit(0);
+            } catch (error) {
+                clearTimeout(forceExit);
+                console.error('Error cerrando recursos:', error);
+                process.exit(1);
+            }
+        });
+    } catch (error) {
+        clearTimeout(forceExit);
+        console.error('Error en el apagado:', error);
+        process.exit(1);
+    }
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'));

@@ -30,6 +30,7 @@ main{
 .app-dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(520px, auto) auto;
   gap: 2vw;
   align-items: stretch;
 }
@@ -46,9 +47,38 @@ main{
   }
 }
 
-.nivel-agua-card {
+.app-dashboard-right-stack {
   grid-column: 2;
   grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2vw;
+  height: 100%;
+  min-height: 0;
+}
+
+.app-dashboard-right-stack > .nivel-agua-card {
+  flex: 0 0 auto;
+}
+
+.app-dashboard-right-stack > .sensores-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@media (max-width: 1024px) {
+  .app-dashboard-right-stack {
+    gap: 1rem;
+    height: auto;
+  }
+
+  .app-dashboard-right-stack > .nivel-agua-card,
+  .app-dashboard-right-stack > .sensores-card {
+    flex: 0 0 auto;
+  }
+}
+
+.nivel-agua-card {
   background-color: var(--app-panel);
   border-radius: 8px;
   padding: 1.5rem;
@@ -84,12 +114,13 @@ main{
 }
 
 .sensores-card {
-  grid-column: 2;
-  grid-row: 2;
   background-color: var(--app-panel);
   border-radius: 8px;
   padding: 1.5rem;
   border: 1px solid var(--app-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .sensores-title {
@@ -98,20 +129,30 @@ main{
 }
 
 .sensores-list {
+  display: flex !important;
+  flex-direction: column !important;
   list-style: none;
   padding: 0;
   margin: 0;
-  border: 1px solid var(--app-border);
-  border-radius: 4px;
-  background-color: var(--app-panel-2);
+  background: transparent;
+  border: none;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .sensor-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   padding: 1rem;
   border-bottom: 1px solid var(--app-border);
+  background: transparent;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .sensor-item:last-child {
@@ -123,6 +164,8 @@ main{
   align-items: center;
   gap: 0.5rem;
   color: var(--app-muted);
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .sensor-icon {
@@ -133,6 +176,8 @@ main{
 .sensor-value {
   font-weight: 700;
   font-family: var(--mono);
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .embalse-selector-wrap {
@@ -184,7 +229,7 @@ main{
 
 .historico-card {
   grid-column: 1;
-  grid-row: 3;
+  grid-row: 2;
   background-color: var(--app-panel);
   border-radius: 8px;
   padding: 1.5rem;
@@ -221,7 +266,7 @@ main{
 
 .alertas-card {
   grid-column: 2;
-  grid-row: 3;
+  grid-row: 2;
   background-color: var(--app-panel);
   border-radius: 8px;
   padding: 1.5rem;

@@ -71,8 +71,6 @@
 .form-card-title {
   margin: 0 0 1rem 0;
   color: var(--app-accent);
-  font-size: 1.1rem;
-  font-weight: 600;
 }
 
 .compuertas-grid {
@@ -288,8 +286,6 @@ gap: 0.6rem;
 .PanelSaih-title {
   margin: 0 0 1rem 0;
   color: var(--app-accent);
-  font-size: 1.05rem;
-  font-weight: 700;
 }
 
 .PanelSaih-meta {
@@ -423,10 +419,8 @@ gap: 0.6rem;
 }
 
 .Sensores-title {
-  margin: 0;
+  margin: 0 0 1rem 0;
   color: var(--app-accent);
-  font-size: 1.1rem;
-  font-weight: 600;
 }
 
 .Sensores-btn {
