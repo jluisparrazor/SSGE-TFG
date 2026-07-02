@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { LineChart, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Line } from 'recharts';
 
 import "./styles/PanelNivelAguaHistorico.css";
+import { apiFetch } from '../lib/api';
 
 function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
     const [datosHistoricos, setDatosHistoricos] = useState([]);
@@ -76,7 +77,7 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
         }
         
         try {
-            const res = await fetch(`http://localhost:3000/api/mediciones?rango=${rango}&embalseId=${embalseId}`);
+            const res = await apiFetch(`/api/mediciones?rango=${rango}&embalseId=${embalseId}`);
             if (res.ok) {
                 const historial = await res.json();
                 if (historial.length > 0) {

@@ -1,21 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
-const { Pool } = require('pg');
-
-const url = new URL(process.env.DATABASE_URL);
-
-// Configuración de la conexión a PostgreSQL usando pg
-const pool = new Pool({
-    user: url.username,
-    password: url.password,
-    host: url.hostname,
-    port: parseInt(url.port || '5432', 10),
-    database: url.pathname.slice(1)
-});
-
-// Configuración de Prisma con el adaptador de PostgreSQL
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const { prisma } = require('../lib/prisma');
 
 class EmbalseRepository {
     static parseNumero(valor, fallback = null){

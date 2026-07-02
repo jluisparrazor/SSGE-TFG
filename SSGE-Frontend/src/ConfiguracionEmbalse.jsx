@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AppHeader from "./components/AppHeader.jsx";
 import AppFooter from "./components/AppFooter.jsx";
 import "./styles/ConfiguracionEmbalse.css";
+import { apiFetch } from "./lib/api";
 
 function ConfiguracionEmbalse() {
   const navigate = useNavigate();
@@ -11,6 +12,50 @@ function ConfiguracionEmbalse() {
   const [errorEmbalses, setErrorEmbalses] = useState("");
   const [embalseAEliminar, setEmbalseAEliminar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
+  const [lanzandoProduccion, setLanzandoProduccion] = useState(false);
+  const [lanzandoHistoricoMes, setLanzandoHistoricoMes] = useState(false);
+  const [mensajeIngesta, setMensajeIngesta] = useState("");
+  const [errorIngesta, setErrorIngesta] = useState("");
+
+  const lanzarTareaIngesta = async (tarea) => {
+    setMensajeIngesta("");
+    setErrorIngesta("");
+
+    const res = await apiFetch('/api/admin/ingesta/ejecutar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tarea })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(data?.error || 'No se pudo lanzar la tarea');
+    }
+
+    setMensajeIngesta(data?.mensaje || 'Tarea lanzada correctamente');
+  };
+
+  const manejarLanzarProduccion = async () => {
+    setLanzandoProduccion(true);
+    try {
+      await lanzarTareaIngesta('produccion');
+    } catch (error) {
+      setErrorIngesta(error.message || 'Error lanzando scraper de produccion');
+    } finally {
+      setLanzandoProduccion(false);
+    }
+  };
+
+  const manejarLanzarHistoricoMesSinSobrescribir = async () => {
+    setLanzandoHistoricoMes(true);
+    try {
+      await lanzarTareaIngesta('poblar_historico_mes_sin_sobrescribir');
+    } catch (error) {
+      setErrorIngesta(error.message || 'Error lanzando poblado historico mensual');
+    } finally {
+      setLanzandoHistoricoMes(false);
+    }
+  };
 
   const handleEliminarEmbalse = async (embalse) => {
     setEmbalseAEliminar(embalse);
@@ -21,7 +66,7 @@ function ConfiguracionEmbalse() {
     
     setEliminando(true);
     try {
-        const res = await fetch(`http://localhost:3000/api/embalses/${embalseAEliminar.id}`, {
+        const res = await apiFetch(`/api/embalses/${embalseAEliminar.id}`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -50,7 +95,7 @@ function ConfiguracionEmbalse() {
         setCargandoEmbalses(true);
         setErrorEmbalses("");
 
-        const res = await fetch("http://localhost:3000/api/embalses");
+        const res = await apiFetch('/api/embalses');
         const data = await res.json();
 
         if (!res.ok) {
@@ -75,7 +120,33 @@ function ConfiguracionEmbalse() {
       <main>
         <div className="config-main-superior">
             <h2 className="config-main-h2">Configuración Embalse</h2>
+            <div className="config-acciones-ingesta">
+              <button
+                type="button"
+                className="btn-guardar"
+                onClick={manejarLanzarProduccion}
+                disabled={lanzandoProduccion || lanzandoHistoricoMes}
+              >
+                {lanzandoProduccion ? 'Lanzando...' : 'Lanzar scraper produccion'}
+              </button>
+              <button
+                type="button"
+                className="btn-guardar"
+                onClick={manejarLanzarHistoricoMesSinSobrescribir}
+                disabled={lanzandoProduccion || lanzandoHistoricoMes}
+              >
+                {lanzandoHistoricoMes ? 'Lanzando...' : 'Lanzar poblar_historico_mes_sin_sobrescribir'}
+              </button>
+            </div>
         </div>
+
+        {mensajeIngesta && (
+            <div className="embalse-ok-banner">{mensajeIngesta}</div>
+        )}
+
+        {errorIngesta && (
+            <div className="embalse-error-banner">{errorIngesta}</div>
+        )}
 
         {errorEmbalses && (
             <div className="embalse-error-banner">{errorEmbalses}</div>

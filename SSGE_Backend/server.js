@@ -1,23 +1,106 @@
 require('dotenv').config();
 
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
 const express = require('express');
 const cors = require('cors');
 const { Server } = require('socket.io');
-const { PrismaClient } = require('@prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
-const { Pool } = require('pg');
+const { prisma, pool } = require('./src/lib/prisma');
 const MedicionRepository = require('./src/services/MedionRepository');
 const EmbalseRepository = require('./src/services/EmbalseRepository');
-const { time } = require('console');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DATABASE_URL = process.env.DATABASE_URL;
+const JWT_SECRET = process.env.JWT_SECRET;
+const INGESTA_API_KEY = process.env.INGESTA_API_KEY;
+const INGESTA_SOCKET_ROOM = 'ingesta';
+const SCRAPER_DIR = process.env.SCRAPER_DIR || '';
+const SCRAPER_DIR_FALLBACK = '/home/jluisparrazor/Escritorio/SSGE-TFG/SSGE-Scraper';
 
+const TAREAS_INGESTA = {
+	produccion: 'produccion.js',
+	poblar_historico_mes_sin_sobrescribir: 'poblar_historico_mes_sin_sobrescribir.js',
+};
+
+const tareasEnEjecucion = new Set();
+
+if (!INGESTA_API_KEY) {
+	console.error('INGESTA_API_KEY no está definida en .env');
+	process.exit(1);
+}
 if (!DATABASE_URL) {
 	console.error('DATABASE_URL no está definida en .env');
 	process.exit(1);
 }
+if (!JWT_SECRET) {
+	console.error('JWT_SECRET no está definida en .env');
+	process.exit(1);
+}
+
+function lanzarScriptIngesta(nombreTarea) {
+	const scraperDir = obtenerDirectorioScraper();
+	const script = TAREAS_INGESTA[nombreTarea];
+	if (!script) {
+		const error = new Error('Tarea de ingesta no valida');
+		error.code = 'TAREA_NO_VALIDA';
+		throw error;
+	}
+
+	if (tareasEnEjecucion.has(nombreTarea)) {
+		const error = new Error('La tarea ya se esta ejecutando');
+		error.code = 'TAREA_EN_EJECUCION';
+		throw error;
+	}
+
+	const scriptPath = path.join(scraperDir, script);
+	if (!fs.existsSync(scriptPath)) {
+		const error = new Error(`No se encontro el script ${script} en ${scraperDir}`);
+		error.code = 'SCRIPT_NO_ENCONTRADO';
+		throw error;
+	}
+
+	tareasEnEjecucion.add(nombreTarea);
+
+	const proceso = spawn('node', [scriptPath], {
+		cwd: scraperDir,
+		detached: true,
+		stdio: 'ignore',
+	});
+
+	proceso.on('error', () => {
+		tareasEnEjecucion.delete(nombreTarea);
+	});
+
+	proceso.on('exit', () => {
+		tareasEnEjecucion.delete(nombreTarea);
+	});
+
+	proceso.unref();
+}
+
+function obtenerDirectorioScraper() {
+	const candidatos = [SCRAPER_DIR, SCRAPER_DIR_FALLBACK].filter(Boolean);
+
+	for (const candidato of candidatos) {
+		try {
+			if (fs.existsSync(candidato) && fs.statSync(candidato).isDirectory()) {
+				return candidato;
+			}
+		} catch (_error) {
+			// Si falla un candidato, intentamos el siguiente.
+		}
+	}
+
+	const error = new Error('No se encontro el directorio del scraper. Define SCRAPER_DIR en el .env del backend apuntando a la carpeta externa.');
+	error.code = 'SCRAPER_NO_CONFIGURADO';
+	throw error;
+}
+
+
 
 const app = express();
 app.use(cors());
@@ -31,36 +114,95 @@ const io = new Server(server, {
 	},
 });
 
-const pool = new Pool({
-	connectionString: DATABASE_URL,
+function getClientIp(req) {
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  if (typeof xForwardedFor === 'string' && xForwardedFor.length > 0) {
+    return xForwardedFor.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || null;
+}
+
+app.use((req, res, next) => {
+  const inicio = Date.now();
+
+  res.on('finish', async () => {
+    try {
+      const user = req.user || null;
+      const duracionMs = Date.now() - inicio;
+
+      await prisma.auditoriaEvento.create({
+        data: {
+          metodo: req.method,
+          endpoint: req.originalUrl || req.url,
+          estadoHttp: res.statusCode,
+          actorId: user?.id ? Number(user.id) : null,
+          actorUsername: user?.username || null,
+          actorRol: user?.rol || null,
+          ip: getClientIp(req),
+          userAgent: req.headers['user-agent'] || null,
+          detalle: JSON.stringify({
+            duracionMs,
+            params: req.params,
+            query: req.query
+          })
+        }
+      });
+    } catch (error) {
+      console.error('Error guardando auditoria:', error.message);
+    }
+  });
+
+  next();
 });
 
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+function isSocketIngestAuthorized(socket) {
+	const apiKey = socket.handshake.auth?.apiKey || socket.handshake.headers['x-api-key'];
+	return Boolean(apiKey && apiKey === INGESTA_API_KEY);
+}
 
-// Manejo de eventos de Socket.IO
-io.on('connection', (socket) => {
-	console.log('Nodo conectado: ', socket.id);
+function requireIngestaApiKey(req, res, next) {
+	const apiKey = req.headers['x-api-key'];
+	if (!apiKey || apiKey !== INGESTA_API_KEY) {
+		return res.status(401).json({ error: 'API key de ingesta invalida' });
+	}
 
-	socket.on('medicion_scrapper', async (datos) => {
-		
-		console.log('Datos recibidos del scrapper: ', datos.timestamp);
+	req.user = {
+		id: null,
+		username: 'ingesta',
+		rol: 'INGESTA',
+	};
 
-		try {
-			io.emit('actualizar_dashboard', datos);
-			console.log('Datos emitidos al Frontend');
+	return next();
+}
 
-			await MedicionRepository.guardar(datos);
-			console.log('Datos guardados en la base de datos');
+app.get('/api/ingesta/embalses-config', requireIngestaApiKey, async (_req, res) => {
+	try {
+		const embalses = await prisma.embalse.findMany({
+			where: { eliminado: false },
+			select: {
+				id: true,
+				nombre: true,
+				saihEstacionCodigo: true,
+				saihIdPunto: true,
+				senalesAsignadas: {
+					where: { activa: true },
+					select: {
+						senal: {
+							select: {
+								codigo: true,
+								nombre: true,
+							},
+						},
+					},
+				},
+			},
+		});
 
-		} catch (error) {
-			console.error('Error al persistir datos:', error.message);
-		}
-	});
-
-	socket.on('disconnect', () => {
-		console.log('Nodo desconectado: ', socket.id);
-	});
+		return res.json(embalses);
+	} catch (error) {
+		console.error('Error en GET /api/ingesta/embalses-config:', error.message);
+		return res.status(500).json({ error: 'Error DB' });
+	}
 });
 
 app.get('/api/embalses', async (_req, res) => {
@@ -73,9 +215,16 @@ app.get('/api/embalses', async (_req, res) => {
 	}
 });
 
-app.post('/api/embalses', async (req, res) => {
+app.post('/api/embalses', requireAuth, requireRole('ADMIN', 'OPERADOR'), async (req, res) => {
 	try {
 		const embalseCreado = await EmbalseRepository.guardar(req.body);
+
+		io.to(INGESTA_SOCKET_ROOM).emit('ingesta:refresh-config', {
+			tipo: 'embalse_creado',
+			embalseId: embalseCreado.id,
+			timestamp: new Date().toISOString(),
+		});
+
 		res.status(201).json(embalseCreado);
 	} catch (error) {
 		console.error('Error en POST /api/embalses:', error.message);
@@ -212,7 +361,7 @@ app.get('/api/embalses/:id', async (req, res) => {
 });
 
 // Endpoint para actualizar un embalse por su ID
-app.put('/api/embalses/:id', async (req, res) => {
+app.put('/api/embalses/:id', requireAuth, requireRole('ADMIN', 'OPERADOR'), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
@@ -234,7 +383,7 @@ app.put('/api/embalses/:id', async (req, res) => {
 });
 
 // DELETE /api/embalses/:id - Borrado lógico
-app.delete('/api/embalses/:id', async (req, res) => {
+app.delete('/api/embalses/:id', requireAuth, requireRole('ADMIN', 'OPERADOR'), async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -256,14 +405,354 @@ app.delete('/api/embalses/:id', async (req, res) => {
         });
     }
 });
+
+app.post('/api/admin/ingesta/ejecutar', requireAuth, requireRole('ADMIN', 'OPERADOR'), async (req, res) => {
+	try {
+		const tarea = typeof req.body?.tarea === 'string' ? req.body.tarea.trim() : '';
+		if (!tarea) {
+			return res.status(400).json({ error: 'tarea es obligatoria' });
+		}
+
+		lanzarScriptIngesta(tarea);
+
+		return res.status(202).json({
+			ok: true,
+			mensaje: `Tarea ${tarea} lanzada correctamente`,
+		});
+	} catch (error) {
+		if (error?.code === 'TAREA_EN_EJECUCION') {
+			return res.status(409).json({ error: error.message });
+		}
+		if (error?.code === 'TAREA_NO_VALIDA') {
+			return res.status(400).json({ error: error.message });
+		}
+		if (error?.code === 'SCRIPT_NO_ENCONTRADO') {
+			return res.status(404).json({ error: error.message });
+		}
+		if (error?.code === 'SCRAPER_NO_CONFIGURADO') {
+			return res.status(500).json({ error: error.message });
+		}
+
+		console.error('Error en POST /api/admin/ingesta/ejecutar:', error.message);
+		return res.status(500).json({ error: error.message || 'No se pudo lanzar la tarea' });
+	}
+});
 	
+app.post('/api/auth/login', async (req, res) => {
+	try {
+		const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+		const password = typeof req.body?.password === 'string' ? req.body.password : '';
+		if (!username || !password) {
+			return res.status(400).json({ error: 'username y password son obligatorios' });
+		}
+		const usuario = await prisma.usuario.findUnique({
+			where: { username },
+			select: {
+				id: true,
+				username: true,
+				passwordHash: true,
+				rol: true,
+				activo: true,
+			},
+		});
+		if (!usuario || !usuario.activo) {
+			return res.status(401).json({ error: 'Credenciales inválidas' });
+		}
+
+		const passwordValida = await bcrypt.compare(password, usuario.passwordHash);
+		if (!passwordValida) {
+			return res.status(401).json({ error: 'Credenciales inválidas' });
+		}
+
+		const token = jwt.sign(
+			{
+				sub: usuario.id,
+				username: usuario.username,
+				rol: usuario.rol,
+			},
+			JWT_SECRET,
+			{ expiresIn: '8h' }
+		);
+
+		return res.status(200).json({
+			token,
+			usuario: {
+				id: usuario.id,
+				username: usuario.username,
+				rol: usuario.rol,
+			},
+		});
+	} catch (error) {
+		console.error('Error en POST /api/auth/login:', error);
+		return res.status(500).json({ error: 'Error interno del servidor' });
+	}
+});
+
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+	try {
+		const usuario = await prisma.usuario.findUnique({
+			where: { id: Number(req.user.id) },
+			select: {
+				id: true,
+				username: true,
+				rol: true,
+				activo: true,
+			},
+		});
+
+		if (!usuario || !usuario.activo) {
+			return res.status(401).json({ error: 'Sesion invalida' });
+		}
+
+		return res.json({ usuario });
+	} catch (error) {
+		console.error('Error en GET /api/auth/me:', error.message);
+		return res.status(500).json({ error: 'Error interno del servidor' });
+	}
+});
+
+app.get('/api/admin/usuarios', requireAuth, requireRole('ADMIN'), async (_req, res) => {
+	try {
+		const usuarios = await prisma.usuario.findMany({
+			orderBy: { id: 'asc' },
+			select: {
+				id: true,
+				username: true,
+				rol: true,
+				activo: true,
+				fchCreacion: true,
+				fchActualizacion: true,
+			},
+		});
+
+		return res.json(usuarios);
+	} catch (error) {
+		console.error('Error en GET /api/admin/usuarios:', error.message);
+		return res.status(500).json({ error: 'Error DB' });
+	}
+});
+
+app.post('/api/admin/usuarios', requireAuth, requireRole('ADMIN'), async (req, res) => {
+	try {
+		const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+		const password = typeof req.body?.password === 'string' ? req.body.password : '';
+		const rol = typeof req.body?.rol === 'string' ? req.body.rol.toUpperCase() : '';
+		const activo = req.body?.activo !== undefined ? Boolean(req.body.activo) : true;
+
+		if (!username || !password || !rol) {
+			return res.status(400).json({ error: 'username, password y rol son obligatorios' });
+		}
+
+		const rolesValidos = ['ADMIN', 'OPERADOR', 'VISUALIZADOR', 'INGESTA'];
+		if (!rolesValidos.includes(rol)) {
+			return res.status(400).json({ error: 'Rol invalido' });
+		}
+
+		const yaExiste = await prisma.usuario.findUnique({ where: { username } });
+		if (yaExiste) {
+			return res.status(409).json({ error: 'El username ya existe' });
+		}
+
+		const passwordHash = await bcrypt.hash(password, 10);
+
+		const usuarioCreado = await prisma.usuario.create({
+			data: {
+				username,
+				passwordHash,
+				rol,
+				activo,
+			},
+			select: {
+				id: true,
+				username: true,
+				rol: true,
+				activo: true,
+				fchCreacion: true,
+				fchActualizacion: true,
+			},
+		});
+
+		return res.status(201).json(usuarioCreado);
+	} catch (error) {
+		console.error('Error en POST /api/admin/usuarios:', error.message);
+		return res.status(500).json({ error: 'Error DB' });
+	}
+});
+
+app.put('/api/admin/usuarios/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+	try {
+		const id = Number(req.params.id);
+		if (!Number.isInteger(id) || id <= 0) {
+			return res.status(400).json({ error: 'id invalido' });
+		}
+
+		const username = typeof req.body?.username === 'string' ? req.body.username.trim() : undefined;
+		const password = typeof req.body?.password === 'string' ? req.body.password : undefined;
+		const rol = typeof req.body?.rol === 'string' ? req.body.rol.toUpperCase() : undefined;
+		const activo = req.body?.activo;
+
+		const data = {};
+
+		if (username !== undefined && username !== '') {
+			data.username = username;
+		}
+
+		if (rol !== undefined) {
+			const rolesValidos = ['ADMIN', 'OPERADOR', 'VISUALIZADOR', 'INGESTA'];
+			if (!rolesValidos.includes(rol)) {
+				return res.status(400).json({ error: 'Rol invalido' });
+			}
+			data.rol = rol;
+		}
+
+		if (activo !== undefined) {
+			data.activo = Boolean(activo);
+		}
+
+		if (password !== undefined) {
+			if (!password) {
+				return res.status(400).json({ error: 'Password invalida' });
+			}
+			data.passwordHash = await bcrypt.hash(password, 10);
+		}
+
+		if (Object.keys(data).length === 0) {
+			return res.status(400).json({ error: 'No hay cambios para actualizar' });
+		}
+
+		const actualizado = await prisma.usuario.update({
+			where: { id },
+			data,
+			select: {
+				id: true,
+				username: true,
+				rol: true,
+				activo: true,
+				fchCreacion: true,
+				fchActualizacion: true,
+			},
+		});
+
+		return res.json(actualizado);
+	} catch (error) {
+		if (error?.code === 'P2025') {
+			return res.status(404).json({ error: 'Usuario no encontrado' });
+		}
+		if (error?.code === 'P2002') {
+			return res.status(409).json({ error: 'El username ya existe' });
+		}
+		console.error('Error en PUT /api/admin/usuarios/:id:', error.message);
+		return res.status(500).json({ error: 'Error DB' });
+	}
+});
+
+app.get('/api/auditoria', requireAuth, requireRole('ADMIN'), async (req, res) => {
+	try {
+		const limiteRaw = Number(req.query.limite);
+		const paginaRaw = Number(req.query.pagina);
+		const limite = Number.isFinite(limiteRaw) && limiteRaw > 0 ? Math.min(200, Math.floor(limiteRaw)) : 50;
+		const pagina = Number.isFinite(paginaRaw) && paginaRaw > 0 ? Math.floor(paginaRaw) : 1;
+		const skip = (pagina - 1) * limite;
+
+		const total = await prisma.auditoriaEvento.count();
+		const eventos = await prisma.auditoriaEvento.findMany({
+			orderBy: { fechaHora: 'desc' },
+			take: limite,
+			skip,
+			select: {
+				id: true,
+				fechaHora: true,
+				metodo: true,
+				endpoint: true,
+				estadoHttp: true,
+				actorId: true,
+				actorUsername: true,
+				actorRol: true,
+				ip: true,
+				userAgent: true,
+				detalle: true,
+			},
+		});
+
+		return res.json({
+			total,
+			pagina,
+			limite,
+			totalPaginas: Math.max(1, Math.ceil(total / limite)),
+			eventos,
+		});
+	} catch (error) {
+		console.error('Error en GET /api/auditoria:', error.message);
+		return res.status(500).json({ error: 'Error DB' });
+	}
+});
+
+function requireAuth(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const [scheme, token] = authHeader.split(' ');
+
+    if (scheme !== 'Bearer' || !token) {
+      return res.status(401).json({ error: 'Token requerido' });
+    }
+
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = {
+      id: payload.sub,
+      username: payload.username,
+      rol: payload.rol
+    };
+
+    return next();
+  } catch (_error) {
+    return res.status(401).json({ error: 'Token inválido o expirado' });
+  }
+}
+
+function requireRole(...rolesPermitidos) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    if (!rolesPermitidos.includes(req.user.rol)) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    return next();
+  };
+}
 
 io.on('connection', (socket) => {
 	console.log(`Socket conectado: ${socket.id}`);
+	const socketIngestaAutorizado = isSocketIngestAuthorized(socket);
+
+	if (socketIngestaAutorizado) {
+		socket.join(INGESTA_SOCKET_ROOM);
+	}
 
 	socket.emit('server:ready', {
 		message: 'Socket.IO funcionando correctamente',
 		timestamp: new Date().toISOString(),
+	});
+
+	socket.on('medicion_scrapper', async (datos) => {
+		if (!socketIngestaAutorizado) {
+			socket.emit('server:error', { message: 'No autorizado para ingesta' });
+			return;
+		}
+
+		if (!datos || !datos.timestamp) {
+			socket.emit('server:error', { message: 'Payload de medicion invalido' });
+			return;
+		}
+
+		try {
+			io.emit('actualizar_dashboard', datos);
+			await MedicionRepository.guardar(datos);
+		} catch (error) {
+			console.error('Error al persistir datos:', error.message);
+		}
 	});
 
 	socket.on('ping', () => {

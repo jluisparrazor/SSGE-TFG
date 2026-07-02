@@ -1,13 +1,26 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Moon, Sun } from "lucide-react";
 import "./styles/AppHeader.css";
+import { apiFetch, clearToken, getToken, getTokenPayload } from "../lib/api";
 
 const THEME_STORAGE_KEY = 'ssge-theme';
 
 function AppHeader() {
+  const navigate = useNavigate();
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
   const [menuPrincipalAbierto, setMenuPrincipalAbierto] = useState(false);
+  const [usuario, setUsuario] = useState(() => {
+    const payload = getTokenPayload();
+    if (!payload?.username) return null;
+
+    return {
+      id: payload.sub,
+      username: payload.username,
+      rol: payload.rol,
+      activo: true,
+    };
+  });
   const menuPrincipalRef = useRef(null);
   const menuUsuarioRef = useRef(null);
   const [theme, setTheme] = useState(() => {
@@ -28,6 +41,44 @@ function AppHeader() {
       // Ignorar errores de almacenamiento local.
     }
   }, [theme]);
+
+  useEffect(() => {
+    const cargarSesion = async () => {
+      const token = getToken();
+      if (!token) {
+        setUsuario(null);
+        return;
+      }
+
+      const payload = getTokenPayload();
+      if (payload?.username) {
+        setUsuario({
+          id: payload.sub,
+          username: payload.username,
+          rol: payload.rol,
+          activo: true,
+        });
+      }
+
+      try {
+        const res = await apiFetch('/api/auth/me');
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            clearToken();
+            setUsuario(null);
+          }
+          return;
+        }
+
+        const data = await res.json();
+        setUsuario(data?.usuario || null);
+      } catch (_error) {
+        // Si falla /me por red o despliegue parcial, mantenemos sesion con el token local.
+      }
+    };
+
+    cargarSesion();
+  }, []);
 
   useEffect(() => {
     const handleDocumentMouseDown = (event) => {
@@ -56,6 +107,35 @@ function AppHeader() {
     };
   }, []);
 
+  const rolLabel = {
+    ADMIN: 'Administrador',
+    OPERADOR: 'Operador',
+    VISUALIZADOR: 'Visualizador',
+    INGESTA: 'Servicio de Ingesta',
+  }[usuario?.rol] || 'Sin sesion';
+
+  const nombreUsuario = usuario?.username || 'Invitado';
+  const avatarTexto = nombreUsuario.slice(0, 2).toUpperCase();
+  const puedeGestionarEmbalses = usuario?.rol === 'ADMIN' || usuario?.rol === 'OPERADOR';
+  const esAdmin = usuario?.rol === 'ADMIN';
+
+  const cerrarSesion = () => {
+    clearToken();
+    setUsuario(null);
+    setMenuUsuarioAbierto(false);
+    navigate('/', { replace: true });
+    window.location.reload();
+  };
+
+  const handleUserTrigger = () => {
+    if (!usuario) {
+      navigate('/login');
+      return;
+    }
+
+    setMenuUsuarioAbierto((prev) => !prev);
+  };
+
   return (
     <header className="app-header">
       <nav className="app-nav">
@@ -79,13 +159,24 @@ function AppHeader() {
             >
               Inicio
             </Link>
-            <Link
-              to="/configuracion-embalse"
-              className="main-dropdown-item"
-              onClick={() => setMenuPrincipalAbierto(false)}
-            >
-              Configuración Embalse
-            </Link>
+            {puedeGestionarEmbalses && (
+              <Link
+                to="/configuracion-embalse"
+                className="main-dropdown-item"
+                onClick={() => setMenuPrincipalAbierto(false)}
+              >
+                Configuración Embalse
+              </Link>
+            )}
+            {esAdmin && (
+              <Link
+                to="/gestion-usuarios"
+                className="main-dropdown-item"
+                onClick={() => setMenuPrincipalAbierto(false)}
+              >
+                Gestión Usuarios
+              </Link>
+            )}
             <Link
               to="/Simulacion"
               className="main-dropdown-item"
@@ -104,8 +195,11 @@ function AppHeader() {
         </div>
 
         <div className="brand">
-          <h1 className="app-title">SSGE</h1>
-          <p className="app-subtitle">Sistema de Simulación y Gestión de Embalses</p>
+          <img src="/Logo_blanco.png" alt="Logo SSGE" className="brand-logo" />
+          <div className="brand-text">
+            <h1 className="app-title">SSGE</h1>
+            <p className="app-subtitle">Sistema de Simulación y Gestión de Embalses</p>
+          </div>
         </div>
 
         <button
@@ -125,12 +219,12 @@ function AppHeader() {
             aria-label="Abrir menu de usuario"
             aria-haspopup="menu"
             aria-expanded={menuUsuarioAbierto}
-            onClick={() => setMenuUsuarioAbierto((prev) => !prev)}
+            onClick={handleUserTrigger}
           >
-            <div className="user-avatar" aria-hidden="true">JL</div>
+            <div className="user-avatar" aria-hidden="true">{avatarTexto}</div>
             <div className="user-info">
-              <span className="user-name">Jose Luis</span>
-              <span className="user-role">Operador</span>
+              <span className="user-name">{nombreUsuario}</span>
+              <span className="user-role">{rolLabel}</span>
             </div>
           </button>
 
@@ -142,7 +236,7 @@ function AppHeader() {
               <button type="button" className="user-dropdown-item" onClick={() => { window.location.href = '/ajustes'; }}>
                 Ajustes
               </button>
-              <button type="button" className="user-dropdown-item user-dropdown-item--danger">
+              <button type="button" className="user-dropdown-item user-dropdown-item--danger" onClick={cerrarSesion}>
                 Cerrar sesion
               </button>
             </div>

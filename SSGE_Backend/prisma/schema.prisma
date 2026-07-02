@@ -11,53 +11,52 @@ datasource db {
   provider = "postgresql"
 }
 
-
 // ---------------------------------------------------------
 // ENTIDADES DEL DOMINIO (DDD)
 // ---------------------------------------------------------
 
 model Embalse {
-  id              Int      @id @default(autoincrement())
-  nombre          String
-  capacidadHm3    Float    // Volumen máximo que puede almacenar
-  cotaMaximaM     Float    // Altura máxima por seguridad
-  cotaMinimaM     Float    @default(0)// Altura mínima por seguridad
+  id                 Int     @id @default(autoincrement())
+  nombre             String
+  capacidadHm3       Float // Volumen máximo que puede almacenar
+  cotaMaximaM        Float // Altura máxima por seguridad
+  cotaMinimaM        Float   @default(0) // Altura mínima por seguridad
   saihEstacionCodigo String?
-  saihIdPunto      String?
-  eliminado       Boolean  @default(false)
-  
+  saihIdPunto        String?
+  eliminado          Boolean @default(false)
+
   // Relaciones (Un embalse tiene muchos sensores, compuertas e historial)
-  sensores        Sensor[]
+  sensores         Sensor[]
   senalesAsignadas EmbalseSenal[]
-  compuertas      Compuerta[]
-  historiales     HistorialSimulacion[]
-  mediciones      MedicionHistorica[]
+  compuertas       Compuerta[]
+  historiales      HistorialSimulacion[]
+  mediciones       MedicionHistorica[]
 }
 
 model Senal {
-  id            Int      @id @default(autoincrement())
-  codigo        String   @unique // Identificador externo/SAIH de la señal
-  nombre        String
-  unidad        String?
-  descripcion   String?
-  tipoDato      String   @default("float")
-  activa        Boolean  @default(true)
+  id          Int     @id @default(autoincrement())
+  codigo      String  @unique // Identificador externo/SAIH de la señal
+  nombre      String
+  unidad      String?
+  descripcion String?
+  tipoDato    String  @default("float")
+  activa      Boolean @default(true)
 
-  embalses      EmbalseSenal[]
+  embalses EmbalseSenal[]
 }
 
 model EmbalseSenal {
-  id            Int      @id @default(autoincrement())
-  embalseId     Int
-  senalId       Int
-  alias         String?
-  activa        Boolean  @default(true)
-  fechaAlta     DateTime @default(now())
-  fechaBaja     DateTime?
+  id        Int       @id @default(autoincrement())
+  embalseId Int
+  senalId   Int
+  alias     String?
+  activa    Boolean   @default(true)
+  fechaAlta DateTime  @default(now())
+  fechaBaja DateTime?
 
-  embalse       Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
-  senal         Senal    @relation(fields: [senalId], references: [id], onDelete: Cascade)
-  mediciones    MedicionHistorica[]
+  embalse    Embalse             @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+  senal      Senal               @relation(fields: [senalId], references: [id], onDelete: Cascade)
+  mediciones MedicionHistorica[]
 
   @@unique([embalseId, senalId])
   @@index([embalseId])
@@ -66,37 +65,37 @@ model EmbalseSenal {
 }
 
 model Sensor {
-  id              Int      @id @default(autoincrement())
-  tipo            String   // Ej. "Nivel", "Lluvia", "pH", "Turbidez"
-  valorActual     Float    // El número que lee el sensor
-  
+  id          Int    @id @default(autoincrement())
+  tipo        String // Ej. "Nivel", "Lluvia", "pH", "Turbidez"
+  valorActual Float // El número que lee el sensor
+
   // Relación con el Embalse
-  embalseId       Int
-  embalse         Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+  embalseId Int
+  embalse   Embalse @relation(fields: [embalseId], references: [id], onDelete: Cascade)
 }
 
 model Compuerta {
-  id                       Int      @id @default(autoincrement())
-  nombre                   String   // Ej. "Aliviadero Superficie", "Desagüe de Fondo"
+  id                       Int    @id @default(autoincrement())
+  nombre                   String // Ej. "Aliviadero Superficie", "Desagüe de Fondo"
   cotaTomaM                Float?
-  estadoAperturaPorcentaje Float    // De 0% a 100%
-  caudalSalidaActual       Float    // El agua que está soltando en m³/s
-  
+  estadoAperturaPorcentaje Float // De 0% a 100%
+  caudalSalidaActual       Float // El agua que está soltando en m³/s
+
   // Relación con el Embalse
-  embalseId                Int
-  embalse                  Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+  embalseId Int
+  embalse   Embalse @relation(fields: [embalseId], references: [id], onDelete: Cascade)
 }
 
 model HistorialSimulacion {
-  id                Int      @id @default(autoincrement())
-  fechaHora         DateTime @default(now()) // Timestamp automático
-  tipo              String   @default("info") // warning | success | info
-  eventoDisparador  String   
-  accionAutomatica  String   
-  
+  id               Int      @id @default(autoincrement())
+  fechaHora        DateTime @default(now()) // Timestamp automático
+  tipo             String   @default("info") // warning | success | info
+  eventoDisparador String
+  accionAutomatica String
+
   // Relación con el Embalse
-  embalseId         Int
-  embalse           Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+  embalseId Int
+  embalse   Embalse @relation(fields: [embalseId], references: [id], onDelete: Cascade)
 }
 
 model MedicionHistorica {
@@ -105,17 +104,52 @@ model MedicionHistorica {
   nivel         Float
   volumen       Float
   precipitacion Float
-  
+
   // Añade el @default(0) a las tres columnas
-  temperatura   Float    @default(0)
-  caudalEntrada Float    @default(0)
-  caudalSalida  Float    @default(0)
-  
-  embalseId     Int
-  embalse       Embalse  @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+  temperatura   Float @default(0)
+  caudalEntrada Float @default(0)
+  caudalSalida  Float @default(0)
+
+  embalseId      Int
+  embalse        Embalse       @relation(fields: [embalseId], references: [id], onDelete: Cascade)
   embalseSenalId Int?
-  embalseSenal  EmbalseSenal? @relation(fields: [embalseSenalId], references: [id], onDelete: SetNull)
+  embalseSenal   EmbalseSenal? @relation(fields: [embalseSenalId], references: [id], onDelete: SetNull)
 
   @@index([timestamp])
   @@index([embalseSenalId])
+}
+
+enum RolUsuario {
+  ADMIN
+  OPERADOR
+  VISUALIZADOR
+  INGESTA
+}
+
+model Usuario {
+  id               Int        @id @default(autoincrement())
+  username         String     @unique
+  passwordHash     String
+  rol              RolUsuario
+  activo           Boolean    @default(true)
+  fchCreacion      DateTime   @default(now())
+  fchActualizacion DateTime   @updatedAt
+}
+
+model AuditoriaEvento {
+  id            Int         @id @default(autoincrement())
+  fechaHora     DateTime    @default(now())
+  metodo        String
+  endpoint      String
+  estadoHttp    Int
+  actorId       Int?
+  actorUsername String?
+  actorRol      RolUsuario?
+  ip            String?
+  userAgent     String?
+  detalle       String?
+
+  @@index([fechaHora])
+  @@index([actorId])
+  @@index([metodo, endpoint])
 }

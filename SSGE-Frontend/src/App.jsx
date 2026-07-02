@@ -8,6 +8,7 @@ import PanelNivelAguaHistorico from './components/PanelNivelAguaHistorico';
 import AppHeader from './components/AppHeader';
 import AppFooter from './components/AppFooter';
 import "./styles/App.css";
+import { apiFetch } from './lib/api';
 
 const socket = io('http://localhost:3000');
 
@@ -126,7 +127,7 @@ function App() {
         setCargandoEmbalses(true);
         setErrorEmbalses('');
 
-        const res = await fetch('http://localhost:3000/api/embalses');
+        const res = await apiFetch('/api/embalses');
         if (!res.ok) throw new Error(`No se pudieron cargar los embalses: ${res.statusText}`);
 
         const datos = await res.json();
@@ -175,7 +176,7 @@ function App() {
   useEffect(() => {
     const cargarDatosIniciales = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/api/mediciones?rango=dia&embalseId=${embalseSeleccionadoId}&limite=4`);
+        const res = await apiFetch(`/api/mediciones?rango=dia&embalseId=${embalseSeleccionadoId}&limite=4`);
         if (!res.ok) throw new Error(`Error al cargar datos iniciales: ${res.statusText}`);
 
         let historial = await res.json();
@@ -261,7 +262,7 @@ function App() {
         try {
           if (!embalseObjetivoId) return;
 
-          const res = await fetch(`http://localhost:3000/api/mediciones?rango=dia&embalseId=${embalseObjetivoId}&limite=1`);
+          const res = await apiFetch(`/api/mediciones?rango=dia&embalseId=${embalseObjetivoId}&limite=1`);
           if (!res.ok) return;
 
           const historial = await res.json();
@@ -304,7 +305,7 @@ function App() {
       }
 
       try {
-        const res = await fetch(`http://localhost:3000/api/historial-simulacion?embalseId=${embalseSeleccionadoId}&limite=4`);
+        const res = await apiFetch(`/api/historial-simulacion?embalseId=${embalseSeleccionadoId}&limite=4`);
         if (!res.ok) {
           throw new Error('Error al cargar las alertas');
         }

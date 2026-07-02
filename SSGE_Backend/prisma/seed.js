@@ -3,10 +3,11 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 const { Pool } = require('pg');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 // Validar que DATABASE_URL esté configurada
 if (!process.env.DATABASE_URL) {
-  console.error('❌ ERROR: DATABASE_URL no está definida en .env');
+  console.error('ERROR: DATABASE_URL no está definida en .env');
   process.exit(1);
 }
 
@@ -31,15 +32,36 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Iniciando la plantación de datos (Seed)...');
+  console.log('Iniciando la plantación de datos (Seed)...');
+
+  await prisma.usuario.deleteMany();
 
   // 1. Limpiamos la base de datos por si ejecutamos el seed varias veces
   // (Al borrar el embalse, el onDelete: Cascade borrará también sus sensores y compuertas)
-  await prisma.embalse.deleteMany();
-  console.log('🧹 Base de datos limpiada.');
+/*   await prisma.embalse.deleteMany(); */
+  console.log('Base de datos limpiada.');
+
+  //Hash de contraseñas para los usuarios
+  const adminHash = await bcrypt.hash('0000', 10);
+  const operadorHash = await bcrypt.hash('0000', 10);
+  const visualizadorHash = await bcrypt.hash('0000', 10);
+  const ingestaHash = await bcrypt.hash('0000', 10);
+
+  // Usuarios iniciales
+  await prisma.usuario.createMany({
+    data: [
+      { username: 'admin',       passwordHash: adminHash,       rol: 'ADMIN',        activo: true },
+      { username: 'operador',    passwordHash: operadorHash,    rol: 'OPERADOR',     activo: true },
+      { username: 'visualizador',passwordHash: visualizadorHash,rol: 'VISUALIZADOR', activo: true },
+      { username: 'ingesta',     passwordHash: ingestaHash,     rol: 'INGESTA',      activo: true }
+    ],
+    skipDuplicates: true
+  });
+
+  console.log('Usuarios creados.');
 
   // 2. Creamos el Embalse de Canales (Granada) con sus sensores y compuertas de golpe
-  const embalseCanales = await prisma.embalse.create({
+ /*  const embalseCanales = await prisma.embalse.create({
     data: {
       nombre: 'Embalse de Canales',
       capacidadHm3: 70.8,    // Capacidad real aproximada
@@ -63,16 +85,16 @@ async function main() {
     }
   });
 
-  console.log('💧 Embalse creado con éxito:', embalseCanales.nombre);
+  console.log('Embalse creado con éxito:', embalseCanales.nombre); */
 }
 
 main()
   .then(async () => {
     await prisma.$disconnect();
-    console.log('✅ Seed completado.');
+    console.log('Seed completado.');
   })
   .catch(async (e) => {
-    console.error('❌ Error en el seed:', e);
+    console.error('Error en el seed:', e);
     await prisma.$disconnect();
     process.exit(1);
   });

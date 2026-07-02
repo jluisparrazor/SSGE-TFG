@@ -5,6 +5,7 @@ import "./styles/AniadirEmbalse.css";
 import AppHeader from "./components/AppHeader.jsx";
 import AppFooter from "./components/AppFooter.jsx";
 import EmbalseInfografia from "./components/EmbalseInfografia.jsx";
+import { apiFetch } from "./lib/api";
 
 const CATALOGO_SAIH_BASE = {
   E41_CANALES: {
@@ -67,7 +68,7 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
 
         const cargarEmbalse = async () => {
             try {
-            const res = await fetch(`http://localhost:3000/api/embalses/${embalseIdEditar}`);
+            const res = await apiFetch(`/api/embalses/${embalseIdEditar}`);
             const data = await res.json();
 
             if (!res.ok) {
@@ -277,13 +278,13 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                 throw new Error('La cota inferior debe ser menor que la cota superior');
             }
 
-            const url = modoEdicion 
-                ? `http://localhost:3000/api/embalses/${embalseIdEditar}`
-                : 'http://localhost:3000/api/embalses';
+            const url = modoEdicion
+                ? `/api/embalses/${embalseIdEditar}`
+                : '/api/embalses';
             
             const metodo = modoEdicion ? 'PUT' : 'POST';
 
-            const respuesta = await fetch(url, {
+            const respuesta = await apiFetch(url, {
                 method: metodo,
                 headers: {
                     'Content-Type': 'application/json'

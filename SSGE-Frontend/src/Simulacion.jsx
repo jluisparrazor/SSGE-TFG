@@ -3,6 +3,7 @@ import AppHeader from './components/AppHeader.jsx';
 import AppFooter from './components/AppFooter.jsx';
 import './styles/Simulacion.css';
 import { Dam, Eye, Gauge, Thermometer, Wind } from 'lucide-react';
+import { apiFetch } from './lib/api';
 
 export default function Simulacion() {
   const [duracion, setDuracion] = useState(60); // minutos
@@ -55,7 +56,7 @@ export default function Simulacion() {
   const enviarDatosCompuerta = async (compuerta) => {
     // ejemplo: adaptalo a tu endpoint real o lógica socket
     try {
-      await fetch('http://localhost:3000/api/compuertas/enviar', {
+      await apiFetch('/api/compuertas/enviar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -88,7 +89,7 @@ export default function Simulacion() {
         setCargandoEmbalses(true);
         setErrorEmbalses('');
 
-        const res = await fetch('http://localhost:3000/api/embalses');
+        const res = await apiFetch('/api/embalses');
         if (!res.ok) throw new Error(`No se pudieron cargar los embalses: ${res.statusText}`);
 
         const datos = await res.json();

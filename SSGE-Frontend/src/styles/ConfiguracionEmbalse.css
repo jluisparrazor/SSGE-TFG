@@ -6,7 +6,24 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.5rem;
+}
+
+.config-acciones-ingesta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.embalse-ok-banner {
+  margin-bottom: 1rem;
+  border: 1px solid #15803d;
+  background: #166534;
+  color: #dcfce7;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
 }
 
 .config-main-h2 {
