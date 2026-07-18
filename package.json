@@ -3,9 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "concurrently \"cd /home/jluisparrazor/SSGE-TFG/SSGE_Backend && node server.js\" \"cd /home/jluisparrazor/Escritorio/SSGE-TFG/SSGE-Scraper && node produccion.js\" \"cd /home/jluisparrazor/SSGE-TFG/SSGE-Frontend && npm run dev\""
+    "dev": "concurrently \"cd ./SSGE_Backend && node server.js\" \"cd ./SSGE_Scraper && node produccion.js\" \"cd ./SSGE-Frontend && npm run dev\""
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "@mermaid-js/mermaid-cli": "^11.16.0",
+    "concurrently": "^9.1.2",
+    "prisma-erd-generator": "^2.4.4"
   }
 }

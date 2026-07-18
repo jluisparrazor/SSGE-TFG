@@ -7,6 +7,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator erd {
+  provider = "prisma-erd-generator"
+  output   = "../ERD_Embalses.png"
+  theme    = "neutral"
+  mmdcPath = "../node_modules/.bin"
+}
+
 datasource db {
   provider = "postgresql"
 }

@@ -19,7 +19,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const INGESTA_API_KEY = process.env.INGESTA_API_KEY;
 const INGESTA_SOCKET_ROOM = 'ingesta';
 const SCRAPER_DIR = process.env.SCRAPER_DIR || '';
-const SCRAPER_DIR_FALLBACK = '/home/jluisparrazor/Escritorio/SSGE-TFG/SSGE-Scraper';
+const SCRAPER_DIR_FALLBACK = path.resolve(__dirname, '../SSGE_Scraper');
 
 const TAREAS_INGESTA = {
 	produccion: 'produccion.js',
@@ -95,7 +95,7 @@ function obtenerDirectorioScraper() {
 		}
 	}
 
-	const error = new Error('No se encontro el directorio del scraper. Define SCRAPER_DIR en el .env del backend apuntando a la carpeta externa.');
+	const error = new Error('No se encontro el directorio del scraper. Verifica que exista SSGE_Scraper en el proyecto o define SCRAPER_DIR en el .env del backend.');
 	error.code = 'SCRAPER_NO_CONFIGURADO';
 	throw error;
 }
