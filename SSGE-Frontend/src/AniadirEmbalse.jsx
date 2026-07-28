@@ -23,7 +23,6 @@ const CATALOGO_SAIH_BASE = {
 
 function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
     const [menuAbierto, setMenuAbierto] = useState(false);
-
     const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
 
     const toggleMenuUsuario = () => {
@@ -44,7 +43,14 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         ],
         sensores: [
             { id: 1, tipo: 'Oxígeno', nombre: 'Sensor de Oxígeno', altura: '' },
-        ]
+        ],
+        // --- NUEVOS CAMPOS DEL GEMELO DIGITAL ---
+        demandaUrbanaMensual: "",
+        demandaAgrariaMensual: "",
+        caudalEcologicoMensual: "",
+        evaporacionMensual: "",
+        curvaSuperficie: "",
+        umbralesSequiaAgraria: ""
     });
 
     const [modalExito, setModalExito] = useState(false);
@@ -68,38 +74,45 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
 
         const cargarEmbalse = async () => {
             try {
-            const res = await apiFetch(`/api/embalses/${embalseIdEditar}`);
-            const data = await res.json();
+                const res = await apiFetch(`/api/embalses/${embalseIdEditar}`);
+                const data = await res.json();
 
-            if (!res.ok) {
-                throw new Error(data?.error || 'No se pudo cargar el embalse');
-            }
+                if (!res.ok) {
+                    throw new Error(data?.error || 'No se pudo cargar el embalse');
+                }
 
-            setFormData({
-                nombre: data.nombre || '',
-                capacidadTotal: String(data.capacidadHm3 ?? ''),
-                cotaSuperior: String(data.cotaMaximaM ?? ''),
-                cotaInferior: String(data.cotaMinimaM ?? ''),
-                saihEstacion: data.saihEstacionCodigo || '',
-                saihSenales: (data.senalesAsignadas || []).map((x) => ({
-                id_sensor: x.senal?.codigo,
-                nombre_sensor: x.alias || x.senal?.nombre || x.senal?.codigo,
-                })),
-                numeroCompuertas: (data.compuertas || []).length || 0,
-                compuertas: (data.compuertas || []).map((c, i) => ({
-                id: i + 1,
-                altura: String(c.cotaTomaM ?? ''),
-                maximoCaudal: String(c.caudalSalidaActual ?? ''),
-                })),
-                sensores: (data.sensores || []).map((s, i) => ({
-                id: i + 1,
-                tipo: s.tipo,
-                nombre: `Sensor de ${s.tipo}`,
-                altura: String(s.valorActual ?? ''),
-                })),
-            });
+                setFormData({
+                    nombre: data.nombre || '',
+                    capacidadTotal: String(data.capacidadHm3 ?? ''),
+                    cotaSuperior: String(data.cotaMaximaM ?? ''),
+                    cotaInferior: String(data.cotaMinimaM ?? ''),
+                    saihEstacion: data.saihEstacionCodigo || '',
+                    saihSenales: (data.senalesAsignadas || []).map((x) => ({
+                        id_sensor: x.senal?.codigo,
+                        nombre_sensor: x.alias || x.senal?.nombre || x.senal?.codigo,
+                    })),
+                    numeroCompuertas: (data.compuertas || []).length || 0,
+                    compuertas: (data.compuertas || []).map((c, i) => ({
+                        id: i + 1,
+                        altura: String(c.cotaTomaM ?? ''),
+                        maximoCaudal: String(c.caudalSalidaActual ?? ''),
+                    })),
+                    sensores: (data.sensores || []).map((s, i) => ({
+                        id: i + 1,
+                        tipo: s.tipo,
+                        nombre: `Sensor de ${s.tipo}`,
+                        altura: String(s.valorActual ?? ''),
+                    })),
+                    // --- CARGAR NUEVOS CAMPOS ---
+                    demandaUrbanaMensual: data.demandaUrbanaMensual !== null ? String(data.demandaUrbanaMensual) : "",
+                    demandaAgrariaMensual: data.demandaAgrariaMensual ? JSON.stringify(data.demandaAgrariaMensual) : "",
+                    caudalEcologicoMensual: data.caudalEcologicoMensual ? JSON.stringify(data.caudalEcologicoMensual) : "",
+                    evaporacionMensual: data.evaporacionMensual ? JSON.stringify(data.evaporacionMensual) : "",
+                    curvaSuperficie: data.curvaSuperficie ? JSON.stringify(data.curvaSuperficie) : "",
+                    umbralesSequiaAgraria: data.umbralesSequiaAgraria ? JSON.stringify(data.umbralesSequiaAgraria) : ""
+                });
             } catch (error) {
-            setErrorEstado(error.message || 'Error cargando embalse');
+                setErrorEstado(error.message || 'Error cargando embalse');
             }
         };
 
@@ -147,17 +160,16 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         setMenuAbierto(false);
     }, [vistaActiva]);
 
-    // Mantener la altura de las columnas sincronizada
     useLayoutEffect(() => {
         if (!panelDatosRef.current || typeof ResizeObserver === 'undefined') return;
 
         const actualizarAlto = () => {
-        if (!panelDatosRef.current) return;
-        setAltoPanelDatos(Math.ceil(panelDatosRef.current.offsetHeight));
+            if (!panelDatosRef.current) return;
+            setAltoPanelDatos(Math.ceil(panelDatosRef.current.offsetHeight));
         };
 
         const observer = new ResizeObserver(() => {
-        actualizarAlto();
+            actualizarAlto();
         });
 
         actualizarAlto();
@@ -165,12 +177,11 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         window.addEventListener('resize', actualizarAlto);
 
         return () => {
-        observer.disconnect();
-        window.removeEventListener('resize', actualizarAlto);
+            observer.disconnect();
+            window.removeEventListener('resize', actualizarAlto);
         };
     }, []);
 
-    //Lógica para cambiar el número de compuertas dinamicamente
     const handleNumCompuertasChange = (e) => {
         const num = parseInt(e.target.value) || 0;
         let nuevasCompuertas = [...formData.compuertas];
@@ -186,12 +197,10 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         setFormData({ ...formData, numeroCompuertas: num, compuertas: nuevasCompuertas });
     };
 
-    // Lógica para actualizar campos simples (nombre, capacidad, etc.)
     const handleCampoSimpleChange = (campo, valor) => {
         setFormData((prev) => ({ ...prev, [campo]: valor }));
     };
 
-    // Lógica para actualizar campos específicos de cada compuerta
     const handleCambioCompuerta = (compuertaId, campo, valor) => {
         setFormData((prev) => ({
             ...prev,
@@ -201,7 +210,6 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         }));
     }
 
-    // Lógica para actualizar campos específicos de cada sensor
     const handleCambioSensor = (sensorId, campo, valor) => {
         setFormData((prev) => ({
             ...prev,
@@ -237,12 +245,29 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         }));
     };
 
+    // Validación segura de JSON
+    const parsearJSONSeguro = (cadena, nombreCampo) => {
+        if (!cadena || cadena.trim() === "") return null;
+        try {
+            return JSON.parse(cadena);
+        } catch (e) {
+            throw new Error(`El campo ${nombreCampo} no tiene un formato JSON válido.`);
+        }
+    };
+
     const handleGuardarEmbalse = async () => {
         setGuardando(true);
         setMensajeEstado("");
         setErrorEstado("");
 
         try {
+            // Validar parseo de JSONs antes de enviar
+            const demandaAgrariaJSON = parsearJSONSeguro(formData.demandaAgrariaMensual, "Demanda Agraria Mensual");
+            const caudalEcologicoJSON = parsearJSONSeguro(formData.caudalEcologicoMensual, "Caudal Ecológico Mensual");
+            const evaporacionJSON = parsearJSONSeguro(formData.evaporacionMensual, "Evaporación Mensual");
+            const curvaSuperficieJSON = parsearJSONSeguro(formData.curvaSuperficie, "Curva de Superficie");
+            const umbralesSequiaJSON = parsearJSONSeguro(formData.umbralesSequiaAgraria, "Umbrales de Sequía Agraria");
+
             const payload = {
                 nombre: formData.nombre.trim(),
                 capacidadHm3: parseNumero(formData.capacidadTotal, null),
@@ -263,7 +288,14 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                 senalesAsignadas: formData.saihSenales.map((senal) => ({
                     codigo : senal.id_sensor,
                     nombre: senal.nombre_sensor
-                }))
+                })),
+                // --- AÑADIR LOS DATOS DEL GEMELO AL PAYLOAD ---
+                demandaUrbanaMensual: formData.demandaUrbanaMensual ? parseNumero(formData.demandaUrbanaMensual, null) : null,
+                demandaAgrariaMensual: demandaAgrariaJSON,
+                caudalEcologicoMensual: caudalEcologicoJSON,
+                evaporacionMensual: evaporacionJSON,
+                curvaSuperficie: curvaSuperficieJSON,
+                umbralesSequiaAgraria: umbralesSequiaJSON
             };
 
             if (!payload.nombre) {
@@ -302,6 +334,7 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                 setMensajeEstado("Embalse actualizado correctamente");
             } else {
                 setMensajeEstado("Embalse guardado correctamente");
+                setModalExito(true);
                 setFormData({
                     nombre: "",
                     capacidadTotal: "",
@@ -316,11 +349,19 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                     ],
                     sensores: [
                         { id: 1, tipo: 'Oxígeno', nombre: 'Sensor de Oxígeno', altura: '' },
-                    ]
+                    ],
+                    demandaUrbanaMensual: "",
+                    demandaAgrariaMensual: "",
+                    caudalEcologicoMensual: "",
+                    evaporacionMensual: "",
+                    curvaSuperficie: "",
+                    umbralesSequiaAgraria: ""
                 });
             }
         } catch (error) {
             setErrorEstado(error.message || "Error al guardar el embalse");
+            // Hacemos scroll arriba para que el usuario vea el error
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setGuardando(false);
         }
@@ -372,8 +413,6 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         .filter((codigo) => /^E.+_.+/.test(codigo))
         .sort((a, b) => a.localeCompare(b));
        
-    /* Bloque de Lógica para Sensores */
-
     const SENSOR_OPTIONS = [
         { tipo: 'Oxígeno', nombre: 'Sensor de Oxígeno' },
         { tipo: 'Temperatura', nombre: 'Sensor de Temperatura' },
@@ -392,7 +431,6 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         return `Sensor de ${tipo}`;
     };
 
-    // Lógica para añadir un nuevo sensor
     const anadirSensor = () => {
         const nuevoId = formData.sensores.length + 1;
         const inicial = SENSOR_OPTIONS[0];
@@ -418,7 +456,6 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
         }));
     };
 
-    /* Bloque de lógica para Infografía */
     const capacidadPreview = parseNumero(formData.capacidadTotal, 0);
     const cotaMaxPreview = parseNumero(formData.cotaSuperior, 960);
     const cotaMinPreview = parseNumero(formData.cotaInferior, 800);
@@ -426,7 +463,6 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
     const nivelDefault = cotaMinPreview + (cotaMaxPreview - cotaMinPreview) / 2;
     const nivelPreview = nivelDefault;
     const caudalEntradaPreview = 8;
-    // Calcular caudal de salida sumando caudales máximos de compuertas (con defaultde 2.5 m³/s por compuerta si no están especificados)
     const caudalSalidaPreview = formData.compuertas.reduce((total, compuerta) => {
         const caudal = parseNumero(compuerta.maximoCaudal, 2.5);
         return total + caudal;
@@ -450,7 +486,6 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
     return (
         <div className='App'>
             <AppHeader />
-                {/* Modal de éxito */}
                 {modalExito && (
                     <div className="modal-overlay" onClick={() => setModalExito(false)}>
                         <div className="modal-contenido" onClick={(e) => e.stopPropagation()}>
@@ -458,7 +493,7 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                                 <CheckCircle size={56}  className="modal-check-icon"/>
                             </div>
                             <h2 className="modal-titulo">¡Embalse guardado!</h2>
-                            <p className="modal-texto">El embalse se ha creado correctamente en el sistema.</p>
+                            <p className="modal-texto">El embalse se ha {modoEdicion ? 'actualizado' : 'creado'} correctamente en el sistema.</p>
                             <button className="modal-boton" onClick={() => setModalExito(false)}>
                                 Continuar
                             </button>
@@ -490,7 +525,6 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
 
                     <div className="aniadirEmbalse-grid">
 
-                        {/* Card de Datos del Embalse */}
                         <div className="form-card" ref={panelDatosRef}>
                             <h3 className="form-card-title">Datos del Embalse</h3>
 
@@ -516,12 +550,9 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                                     <input type="number" min="1" max="8" value={formData.numeroCompuertas} onChange={handleNumCompuertasChange} className="form-card-input"/>
                                 </div>
 
-                                {/* Listado de Compuertas Dinámicas */}
-
                                 <div className="compuertas-grid">
                                     {formData.compuertas.map((compuerta) => (
                                         <div key={compuerta.id} className="form-card-campo compuerta-campo">
-                                            {/* Icono de Compuerta */}
                                             <div className="compuerta-header">
                                                 <div className="compuerta-icon">
                                                     < Dam size={18} className="compuerta-icon-svg"/>
@@ -578,7 +609,6 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                             </div>
                         </div>
 
-                        {/* Card de Configuración SAIH */}
                         <div
                         className="PanelSaih-card"
                         style={{
@@ -650,7 +680,6 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                             </div>
                         </div>
                         
-                        {/* Card de Sensores */}
                         <div className="Sensores-card">
                             <div className="Sensores-header">
                                 <h3 className="Sensores-title">Sensores</h3>
@@ -729,14 +758,90 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                                 })}
                             </div>
                         </div>
-                        
+
                         {/* Card para la vista del nuevo embalse */}
                         <div className="Infografia-card">
                             <EmbalseInfografia
                                 embalseNombre={formData.nombre?.trim() || "Nombre del Embalse"}
                                 datoActual={datoPreview}
                                 compuertas={formData.compuertas}
+                                curvaSuperficie={parsearJSONSeguro(formData.curvaSuperficie, "Curva de Superficie") || []}
+                                sensores={formData.sensores.map((s) => ({
+                                    tipo: s.tipo,
+                                    valorActual: parseNumero(s.altura, 0)
+                                }))}
                             />
+                        </div>
+
+                        {/* CONFIGURACIÓN GEMELO DIGITAL --- */}
+                        <div className="form-card Gemelo-card">
+                            <h3 className="form-card-title">Configuración Gemelo Digital</h3>
+                            <p className="gemelo-desc">Pega aquí los valores extraídos del Plan Hidrológico para este embalse. Asegúrate de usar un formato JSON válido (con corchetes `[]` para listas).</p>
+
+                            <div className="form-card-content">
+                                <div className="form-card-campo">
+                                    <span className="form-card-label">Demanda Urbana Mensual (hm³)</span>
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        value={formData.demandaUrbanaMensual} 
+                                        onChange={(e) => handleCampoSimpleChange('demandaUrbanaMensual', e.target.value)} 
+                                        placeholder="Ej: 4.72" 
+                                        className="form-card-input"
+                                    />
+                                </div>
+
+                                <div className="form-card-campo">
+                                    <span className="form-card-label">Demanda Agraria Mensual (Array de 12 meses, hm³)</span>
+                                    <textarea 
+                                        value={formData.demandaAgrariaMensual} 
+                                        onChange={(e) => handleCampoSimpleChange('demandaAgrariaMensual', e.target.value)} 
+                                        placeholder="Ej: [2.1, 2.1, 4.5, 8.2, 17.21, 14.0, 13.5, 15.9, 9.0, 5.0, 2.8, 2.1]" 
+                                        className="form-card-input gemelo-textarea"
+                                    />
+                                </div>
+
+                                <div className="form-card-campo">
+                                    <span className="form-card-label">Caudal Ecológico Mensual (Array de 12 meses, m³/s)</span>
+                                    <textarea 
+                                        value={formData.caudalEcologicoMensual} 
+                                        onChange={(e) => handleCampoSimpleChange('caudalEcologicoMensual', e.target.value)} 
+                                        placeholder="Ej: [0.145, 0.145, 0.145, 0.145, 0.110, 0.110, 0.110, 0.110, 0.110, 0.115, 0.115, 0.145]" 
+                                        className="form-card-input gemelo-textarea"
+                                    />
+                                </div>
+
+                                <div className="form-card-campo">
+                                    <span className="form-card-label">Evaporación Mensual (Array de 12 meses, mm)</span>
+                                    <textarea 
+                                        value={formData.evaporacionMensual} 
+                                        onChange={(e) => handleCampoSimpleChange('evaporacionMensual', e.target.value)} 
+                                        placeholder="Ej: [38.9, 45.8, 92.0, 105.2, 125.9, 166.6, 235.2, 232.7, 161.9, 81.2, 58.6, 48.7]" 
+                                        className="form-card-input gemelo-textarea"
+                                    />
+                                </div>
+
+                                <div className="form-card-campo">
+                                    <span className="form-card-label">Umbrales de Sequía Agraria (Crítico, Bajo, Medio, en hm³)</span>
+                                    <input 
+                                        type="text" 
+                                        value={formData.umbralesSequiaAgraria} 
+                                        onChange={(e) => handleCampoSimpleChange('umbralesSequiaAgraria', e.target.value)} 
+                                        placeholder="Ej: [15, 43, 65]" 
+                                        className="form-card-input"
+                                    />
+                                </div>
+
+                                <div className="form-card-campo">
+                                    <span className="form-card-label">Curva Superficie-Volumen (Array de objetos)</span>
+                                    <textarea 
+                                        value={formData.curvaSuperficie} 
+                                        onChange={(e) => handleCampoSimpleChange('curvaSuperficie', e.target.value)} 
+                                        placeholder='Ej: [{"vol": 0, "sup": 1}, {"vol": 14.1, "sup": 31}, {"vol": 70.7, "sup": 156}]' 
+                                        className="form-card-input gemelo-textarea gemelo-textarea--tall"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* BOTÓN GUARDAR INFERIOR */}

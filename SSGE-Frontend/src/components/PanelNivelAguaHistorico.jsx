@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { LineChart, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Line } from 'recharts';
+import { Eye, EyeOff } from 'lucide-react';
 
 import "./styles/PanelNivelAguaHistorico.css";
 import { apiFetch } from '../lib/api';
@@ -7,6 +8,13 @@ import { apiFetch } from '../lib/api';
 function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
     const [datosHistoricos, setDatosHistoricos] = useState([]);
     const [rangoGrafica, setRangoGrafica] = useState('mes');
+    
+    // Estado para controlar qué métricas se muestran en la gráfica
+    const [visibilidadGrafica, setVisibilidadGrafica] = useState({
+        volumen: true,
+        caudalEntrada: false,
+        caudalSalida: false,
+    });
 
     const parseDateStr = (dateStr) => {
         if (!dateStr || !dateStr.includes('-')) return 0;
@@ -50,15 +58,10 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
             const usados = new Set();
 
             const idxPrimero = elegirCercano(items, 0, usados);
-            if (idxPrimero >= 0) {
-                usados.add(idxPrimero);
-            }
+            if (idxPrimero >= 0) usados.add(idxPrimero);
             
-            let idxSegundo = elegirCercano(items, 12, usados);
-            if (idxSegundo >= 0 && items.length > 1) {
-                idxSegundo = items.length - 1;
-                if (usados.has(idxSegundo)) idxSegundo = 0;
-            }
+            const idxSegundo = elegirCercano(items, 12, usados);
+            if (idxSegundo >= 0) usados.add(idxSegundo);
 
             const seleccion = [];
             if (idxPrimero >= 0) seleccion.push(items[idxPrimero]);
@@ -84,7 +87,9 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
                     const puntos = historial.sort((a, b) => parseDateStr(a.timestamp) - parseDateStr(b.timestamp))
                     .map((d) => ({ 
                         timestamp: parseDateStr(d.timestamp),
-                        volumen: parseFloat(d.volumen) || 0
+                        volumen: parseFloat(d.volumen) || 0,
+                        caudalEntrada: parseFloat(d.caudalEntrada) || 0,
+                        caudalSalida: parseFloat(d.caudalSalida) || 0,
                     }));
 
                     const datosParaGrafica = rango === 'mes' ? reducirMuestrasMensuales(puntos) : puntos;
@@ -140,12 +145,12 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
         }, 15000);
         
         return () => clearInterval(interval);
-    }, [rangoGrafica,embalseId, refreshToken]);
+    }, [rangoGrafica, embalseId, refreshToken]);
 
     return(
         <div className="historico-card" >
             <div className="historico-header">
-                <h3 className="historico-title">Historial de Volumen de Agua</h3>
+                <h3 className="historico-title">Historial del Embalse</h3>
                 <div className="historico-actions">
                     {[
                         { id: 'dia', label: 'Últimas 24 Horas' },
@@ -161,9 +166,40 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
                     ))}
                 </div>
             </div>
-            <div className="historico-chart">
-                <ResponsiveContainer width="100%" height={320}>
-                    <LineChart data={datosHistoricos}>
+
+            {/* Fila de Toggles para elegir qué métricas ver */}
+            <div className="simulacion-toggles-container" style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+                <button
+                    type="button"
+                    onClick={() => setVisibilidadGrafica(prev => ({ ...prev, volumen: !prev.volumen }))}
+                    className={`simulacion-toggle-btn btn-proyectado ${visibilidadGrafica.volumen ? 'activo' : ''}`}
+                >
+                    {visibilidadGrafica.volumen ? <Eye size={15} /> : <EyeOff size={15} />}
+                    Volumen (hm³)
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setVisibilidadGrafica(prev => ({ ...prev, caudalEntrada: !prev.caudalEntrada }))}
+                    className={`simulacion-toggle-btn btn-caudal-real ${visibilidadGrafica.caudalEntrada ? 'activo' : ''}`}
+                >
+                    {visibilidadGrafica.caudalEntrada ? <Eye size={15} /> : <EyeOff size={15} />}
+                    Caudal Entrada (m³/s)
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setVisibilidadGrafica(prev => ({ ...prev, caudalSalida: !prev.caudalSalida }))}
+                    className={`simulacion-toggle-btn btn-caudal-sim ${visibilidadGrafica.caudalSalida ? 'activo' : ''}`}
+                >
+                    {visibilidadGrafica.caudalSalida ? <Eye size={15} /> : <EyeOff size={15} />}
+                    Caudal Salida (m³/s)
+                </button>
+            </div>
+
+            <div className="historico-chart" style={{ flex: 1, minHeight: 0, padding: '0.25rem 0.5rem' }}>
+                <ResponsiveContainer width="100%" height="100%" key={JSON.stringify(visibilidadGrafica)}>
+                    <LineChart data={datosHistoricos} margin={{ top: 10, right: -20, left: -10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
                         <XAxis
                             dataKey="timestamp"
@@ -174,35 +210,81 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
                             minTickGap={rangoGrafica === 'mes' ? 48 : 20}
                             interval="preserveStartEnd"
                             tick={{ fontSize: 'var(--tick-font-size)' }}
-                            
                             tickFormatter={(value) => {
-                            const fecha = new Date(value);
-                            if (rangoGrafica === 'dia') {
-                                return fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                            }
-                            return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+                                const fecha = new Date(value);
+                                if (rangoGrafica === 'dia') {
+                                    return fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                                }
+                                return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
                             }}
                         />
+                        
+                        {/* Eje Y Izquierdo para Volumen */}
                         <YAxis
+                            yAxisId="left"
                             domain={dominioVolumenHistorico}
                             stroke="var(--muted)"
                             tick={{ fontSize: 'var(--tick-font-size)' }}
                             tickFormatter={(value) => `${value.toFixed(1)}`}
                         />
+
+                        {/* Eje Y Derecho para Caudales */}
+                        <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            stroke="var(--muted)"
+                            tick={{ fontSize: 'var(--tick-font-size)' }}
+                            tickFormatter={(value) => `${value.toFixed(2)}`}
+                        />
+
                         <Tooltip
-                            contentStyle={{ backgroundColor: 'var(--panel-bg)', borderColor: 'var(--border-color)' }}
+                            contentStyle={{ backgroundColor: 'var(--panel-bg)', borderColor: 'var(--border-color)', borderRadius: '8px', color: '#e2e8f0' }}
                             labelFormatter={(value) => new Date(value).toLocaleString('es-ES')}
-                            formatter={(value) => [`${Number(value).toFixed(3)} hm³`, 'Volumen']}
+                            formatter={(value, name) => {
+                                if (name.includes('Volumen')) return [`${Number(value).toFixed(3)} hm³`, name];
+                                return [`${Number(value).toFixed(2)} m³/s`, name];
+                            }}
                         />
-                        <Line
-                            type="monotone"
-                            dataKey="volumen"
-                            stroke="var(--line-stroke)"
-                            strokeWidth="var(--line-width)"
-                            dot={{ r: 'var(--dot-radius)', fill: 'var(--panel-bg)', stroke: 'var(--line-stroke)' }}
-                            isAnimationActive={false}
-                        />
-                        </LineChart>
+
+                        {visibilidadGrafica.volumen && (
+                            <Line
+                                yAxisId="left"
+                                type="monotone"
+                                dataKey="volumen"
+                                name="Volumen"
+                                stroke="#22d3ee"
+                                strokeWidth={2}
+                                dot={false}
+                                isAnimationActive={false}
+                            />
+                        )}
+
+                        {visibilidadGrafica.caudalEntrada && (
+                            <Line
+                                yAxisId="right"
+                                type="monotone"
+                                dataKey="caudalEntrada"
+                                name="Caudal Entrada"
+                                stroke="#4ade80"
+                                strokeWidth={2}
+                                dot={false}
+                                isAnimationActive={false}
+                            />
+                        )}
+
+                        {visibilidadGrafica.caudalSalida && (
+                            <Line
+                                yAxisId="right"
+                                type="stepAfter"
+                                dataKey="caudalSalida"
+                                name="Caudal Salida"
+                                stroke="#fca5a5"
+                                strokeWidth={2}
+                                dot={false}
+                                isAnimationActive={false}
+                            />
+                        )}
+                    </LineChart>
                 </ResponsiveContainer>
             </div>
         </div>

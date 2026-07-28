@@ -31,6 +31,16 @@ model Embalse {
   saihEstacionCodigo String?
   saihIdPunto        String?
   eliminado          Boolean @default(false)
+  activo             Boolean @default(true)
+
+  // --- CONFIGURACIÓN DINÁMICA DEL GEMELO DIGITAL
+  
+  demandaUrbanaMensual  Float?   // Ej: 4.72
+  demandaAgrariaMensual Json?    // Array 12 meses. Ej: [2.1, 2.1, 4.5, 8.2, 17.21, ...]
+  caudalEcologicoMensual Json?   // Array 12 meses. Ej: [0.145, 0.145, 0.145, 0.110...]
+  evaporacionMensual    Json?    // Array 12 meses (mm). Ej: [38.9, 45.8, 92.0...]
+  curvaSuperficie       Json?    
+  umbralesSequiaAgraria Json?    
 
   // Relaciones (Un embalse tiene muchos sensores, compuertas e historial)
   sensores         Sensor[]
@@ -38,6 +48,7 @@ model Embalse {
   compuertas       Compuerta[]
   historiales      HistorialSimulacion[]
   mediciones       MedicionHistorica[]
+  resultadosSimulacion ResultadoSimulacion[]
 }
 
 model Senal {
@@ -159,4 +170,20 @@ model AuditoriaEvento {
   @@index([fechaHora])
   @@index([actorId])
   @@index([metodo, endpoint])
+}
+
+model ResultadoSimulacion {
+  id              Int      @id @default(autoincrement())
+  fechaEjecucion  DateTime @default(now())
+  tipo            String
+  embalseId       Int
+  parametrosInput Json
+  proyeccion      Json
+  alertaMaxima    String
+  duracionMin     Int
+
+  embalse Embalse @relation(fields: [embalseId], references: [id], onDelete: Cascade)
+
+  @@index([embalseId])
+  @@index([fechaEjecucion])
 }

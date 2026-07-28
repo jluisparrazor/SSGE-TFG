@@ -71,11 +71,7 @@ createRoot(document.getElementById('root')).render(
         />
         <Route
           path="/simulacion"
-          element={(
-            <RequireAuth>
-              <Simulacion />
-            </RequireAuth>
-          )}
+          element={<Simulacion />}
         />
         <Route
           path="/configuracion-embalse"

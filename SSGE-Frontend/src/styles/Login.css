@@ -76,8 +76,8 @@
   position: relative;
   width: min(460px, 92vw);
   border: 1px solid var(--app-border);
-  background: linear-gradient(165deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.98));
-  border-radius: 18px;
+  background: var(--app-panel);
+  border-radius: 8px; 
   padding: 1.35rem;
   box-shadow: 0 22px 48px rgba(2, 6, 23, 0.45);
 }
@@ -85,11 +85,9 @@
 .inicio-sesion-tarjeta--modal {
   width: min(680px, 94vw);
   padding: 2rem 2.2rem;
-  border-radius: 24px;
-  background: linear-gradient(165deg, rgba(18, 28, 44, 0.88), rgba(10, 17, 32, 0.94));
+  border-radius: 8px;
+  background: var(--app-bg);
   box-shadow: 0 28px 72px rgba(2, 6, 23, 0.58);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .inicio-sesion-marca {
@@ -157,19 +155,24 @@
   font-size: 0.82rem;
 }
 
+.inicio-sesion-pagina--modal .inicio-sesion-brillo-fondo,
+.inicio-sesion-pagina--modal .inicio-sesion-fondo {
+  display: none;
+}
+
 .inicio-sesion-entrada-contenedor {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border-radius: 12px;
+  border-radius: 8px; 
   border: 1px solid var(--app-border);
-  background: rgba(8, 47, 73, 0.35);
+  background: var(--app-panel-2); 
   padding: 0.62rem 0.72rem;
   color: var(--app-accent);
 }
 
 .inicio-sesion-tarjeta--modal .inicio-sesion-entrada-contenedor {
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 0.82rem 0.9rem;
 }
 
@@ -200,7 +203,7 @@
   border: 1px solid #dc2626;
   background: rgba(127, 29, 29, 0.35);
   color: #fecaca;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 0.52rem 0.62rem;
   font-size: 0.86rem;
 }
@@ -208,27 +211,35 @@
 .inicio-sesion-boton {
   margin-top: 0.15rem;
   border: 1px solid var(--app-accent);
-  background: linear-gradient(180deg, #06b6d4, #0891b2);
-  color: #06202a;
+  background: var(--app-accent); 
+  color: #000;
   font-weight: 700;
-  border-radius: 12px;
+  border-radius: 8px; 
   padding: 0.72rem;
   cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .inicio-sesion-tarjeta--modal .inicio-sesion-boton {
   padding: 0.92rem;
-  border-radius: 14px;
+  border-radius: 8px;
   font-size: 1rem;
 }
 
 .inicio-sesion-boton:disabled {
-  opacity: 0.75;
+  opacity: 0.6;
   cursor: wait;
 }
 
 .inicio-sesion-boton:not(:disabled):hover {
-  filter: brightness(1.05);
+  background: var(--app-accent);
+  opacity: 0.9;
+  transform: translateY(-2px);
+  filter: none; 
+}
+
+.inicio-sesion-boton:not(:disabled):active {
+  transform: translateY(0);
 }
 
 :root[data-theme='light'] .inicio-sesion-tarjeta {
@@ -238,6 +249,40 @@
 
 :root[data-theme='light'] .inicio-sesion-entrada-contenedor {
   background: rgba(255, 255, 255, 0.66);
+}
+
+/* --- BOTÓN DE CERRAR / VOLVER --- */
+.inicio-sesion-boton-cerrar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: var(--app-muted);
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  z-index: 10;
+}
+
+.inicio-sesion-boton-cerrar:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--app-text);
+}
+
+/* Si está en formato modal más grande, le damos un poco más de margen */
+.inicio-sesion-tarjeta--modal .inicio-sesion-boton-cerrar {
+  top: 1.5rem;
+  right: 1.5rem;
+}
+
+/* Modo claro (opcional si tu app usa light mode) */
+:root[data-theme='light'] .inicio-sesion-boton-cerrar:hover {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 @media (max-width: 600px) {
@@ -251,13 +296,13 @@
 
   .inicio-sesion-tarjeta {
     padding: 1.05rem;
-    border-radius: 14px;
+    border-radius: 8px;
   }
 
   .inicio-sesion-tarjeta--modal {
     width: min(100%, 560px);
     padding: 1.35rem;
-    border-radius: 18px;
+    border-radius: 8px;
   }
 
   .inicio-sesion-titulo {

@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, X } from 'lucide-react';
 import { apiFetch, getToken, setToken } from './lib/api';
 import './styles/Login.css';
 
-function InicioSesion({ modal = false }) {
+function InicioSesion({ modal = false, onClose }) { 
   const navegar = useNavigate();
   const [nombreUsuario, setNombreUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
 
-  if (getToken()) {
+  // 1. LA CLAVE: Solo redirigimos automáticamente si NO es un modal. 
+  // Si es un modal, queremos mantener al usuario en la página que estaba viendo.
+  if (!modal && getToken()) {
     return <Navigate to="/" replace />;
   }
 
@@ -46,12 +48,29 @@ function InicioSesion({ modal = false }) {
       }
 
       setToken(datos.token);
-      navegar('/', { replace: true });
-      window.location.reload();
+      
+      // 2. Si es modal, primero lo cerramos para evitar el re-render y luego recargamos
+      if (modal && onClose) {
+        onClose(); 
+        window.location.reload(); 
+      } else {
+        navegar('/', { replace: true });
+        window.location.reload();
+      }
+
     } catch (errorCapturado) {
       setError(errorCapturado.message || 'Error al iniciar sesion');
     } finally {
+      // Si el modal ya se ha cerrado, este cambio de estado no provocará una redirección fantasma
       setCargando(false);
+    }
+  };
+
+  const handleCerrar = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      navegar(-1);
     }
   };
 
@@ -62,6 +81,16 @@ function InicioSesion({ modal = false }) {
       <div className="inicio-sesion-brillo-fondo inicio-sesion-brillo-fondo--inferior" aria-hidden="true" />
 
       <main className={claseTarjeta} role="main" aria-label="Formulario de acceso">
+        
+        <button 
+          type="button" 
+          className="inicio-sesion-boton-cerrar" 
+          onClick={handleCerrar}
+          aria-label="Cerrar ventana"
+        >
+          <X size={20} />
+        </button>
+
         <div className="inicio-sesion-marca">
           <img src="/Logo_blanco.png" alt="Logo SSGE" className="inicio-sesion-logo" />
           <div>
@@ -87,7 +116,7 @@ function InicioSesion({ modal = false }) {
           </label>
 
           <label className="inicio-sesion-campo">
-            <span className="inicio-sesion-campo-etiqueta">Contrasena</span>
+            <span className="inicio-sesion-campo-etiqueta">Contraseña</span>
             <span className="inicio-sesion-entrada-contenedor">
               <Lock size={16} aria-hidden="true" />
               <input

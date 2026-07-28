@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, use } from 'react'
 import { io } from 'socket.io-client';
-import { Thermometer, CloudRain, Waves, TriangleAlert, ArrowRightFromLine, CheckCircle} from 'lucide-react';
+import { Thermometer, CloudRain, Waves, TriangleAlert, ArrowRightFromLine, CheckCircle, Gauge, Wind, Eye } from 'lucide-react';
 import {LineChart, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Line} from 'recharts';
 
 import EmbalseInfografia from './components/EmbalseInfografia'
@@ -131,7 +131,7 @@ function App() {
         if (!res.ok) throw new Error(`No se pudieron cargar los embalses: ${res.statusText}`);
 
         const datos = await res.json();
-        const listaEmbalses = Array.isArray(datos) ? datos : [];
+        const listaEmbalses = Array.isArray(datos) ? datos.filter(emb => emb.activo) : [];
         setEmbalses(listaEmbalses);
         
         setEmbalseSeleccionadoId((prevId) => {
@@ -346,9 +346,6 @@ function App() {
         <div className='main-superior'>
           <h2 className='main-h2'>Panel General</h2>
           <div className="embalse-selector-wrap">
-            <label htmlFor="selector-embalse" className='embalse-selector-label'>
-              Embalse
-            </label>
             <select
               id="selector-embalse"
               className="embalse-selector"
@@ -380,6 +377,8 @@ function App() {
             datoActual={datoActual}
             embalseNombre={embalseSeleccionado?.nombre || 'Embalse'}
             compuertas={embalseSeleccionado?.compuertas || []}
+            curvaSuperficie={embalseSeleccionado?.curvaSuperficie || []}
+            sensores={embalseSeleccionado?.sensores || []}
           />
 
           <div className="app-dashboard-right-stack">
@@ -449,24 +448,49 @@ function App() {
             refreshToken={refreshHitoricoToken}
           />
 
-          {/* 5. Alertas/Decisiones */}
+          {/* 5. Sensores de Calidad (Configurados en BD con valores simulados) */}
           <div className="alertas-card">
-            <h3 className="alertas-title">Últimas Alertas/Decisiones</h3>
-            <div className="alertas-content">
-              {ultimasAlertas.map((alerta) => (
-                <div className="alerta-item" key={alerta.id}>
-                  <div className="alerta-header">
-                    {alerta.tipo === 'warning' ? (
-                      <TriangleAlert size={20} className="alerta-icon alerta-icon--warning" />
-                    ) : (
-                      <CheckCircle size={20} className="alerta-icon alerta-icon--success" />
-                    )}
-                    <span className="alerta-time">{alerta.hora}</span>
-                    <span className="alerta-resumen">{alerta.titulo}</span>
-                  </div>
-                  <p className="alerta-text">{alerta.descripcion}</p>
-                </div>
-              ))}
+            <h3 className="alertas-title">Calidad del Agua</h3>
+            <div className="alertas-content alertas-content--no-scroll">
+              <ul className="sensores-list sensores-list--spaced">
+                {embalseSeleccionado?.sensores && embalseSeleccionado.sensores.length > 0 ? (
+                  embalseSeleccionado.sensores.map((sensor) => {
+                    let icono = <Gauge size={22} className="sensor-icon" />;
+                    let valorSimulado = '--';
+                    let unidad = '';
+
+                    if (sensor.tipo === 'Oxígeno') {
+                      icono = <Wind size={22} className="sensor-icon" />;
+                      valorSimulado = '8.2';
+                      unidad = 'mg/L';
+                    } else if (sensor.tipo === 'Temperatura') {
+                      icono = <Thermometer size={22} className="sensor-icon" />;
+                      valorSimulado = '21.5';
+                      unidad = '°C';
+                    } else if (sensor.tipo === 'Turbidez') {
+                      icono = <Eye size={22} className="sensor-icon" />;
+                      valorSimulado = '14.3';
+                      unidad = 'NTU';
+                    }
+
+                    return (
+                      <li className="sensor-item" key={sensor.id}>
+                        <span className="sensor-label">
+                          {icono}
+                          {sensor.nombre || `Sensor de ${sensor.tipo}`}
+                        </span>
+                        <span className="sensor-value">
+                          {valorSimulado} {unidad}
+                        </span>
+                      </li>
+                    );
+                  })
+                ) : (
+                  <p className="sensor-empty-msg">
+                    No hay sensores de calidad configurados para este embalse.
+                  </p>
+                )}
+              </ul>
             </div>
           </div>
 

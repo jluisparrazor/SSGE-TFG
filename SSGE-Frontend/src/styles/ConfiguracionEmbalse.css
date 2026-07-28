@@ -23,7 +23,7 @@
   background: #166534;
   color: #dcfce7;
   padding: 0.65rem 0.8rem;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .config-main-h2 {
@@ -56,14 +56,14 @@
   gap: 0.75rem;
   background: var(--app-panel-2);
   border: 1px solid var(--app-border);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 0.75rem 0.85rem;
   min-width: 0;
 }
 
 .config-embalse-edit-btn {
   padding: 0.35rem 0.85rem;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 0.9rem;
   flex-shrink: 0;
   margin-left: auto;
@@ -72,17 +72,20 @@
 
 .config-embalse-delete-btn {
   padding: 0.35rem 0.85rem;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 0.9rem;
   flex-shrink: 0;
   border: 1px solid #b42318;
   background: #dc2626;
   color: #fff;
   cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
 }
 
 .config-embalse-delete-btn:hover:not(:disabled) {
-  background: #b91c1c;
+  background: #dc2626; 
+  opacity: 0.9;
+  transform: translateY(-2px);
 }
 
 .config-embalse-delete-btn:disabled {
@@ -120,10 +123,11 @@
 .modal-boton-cancelar,
 .modal-boton-eliminar {
   padding: 0.55rem 1rem;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 0;
   cursor: pointer;
   font-weight: 600;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .modal-boton-cancelar {
@@ -136,12 +140,53 @@
   color: #fff;
 }
 
+.modal-boton-cancelar:hover:not(:disabled),
 .modal-boton-eliminar:hover:not(:disabled) {
-  background: #b91c1c;
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.modal-boton-cancelar:active:not(:disabled),
+.modal-boton-eliminar:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .modal-boton-cancelar:disabled,
 .modal-boton-eliminar:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.config-embalse-toggle-btn {
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  border: 1px solid #64748b;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  order: 1; 
+}
+
+.config-embalse-toggle-btn:hover:not(:disabled) {
+  background: var(--app-panel);
+  color: var(--app-text);
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.config-embalse-toggle-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.config-embalse-toggle-btn--inactivo {
+  border-color: #059669;
+  color: #34d399;
+}
+
+.config-embalse-item--desactivado {
+  opacity: 0.6;
+  border-style: dashed;
 }

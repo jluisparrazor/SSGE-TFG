@@ -36,6 +36,13 @@ class EmbalseRepository {
         const saihEstacionCodigo = payload?.saihEstacionCodigo ? String(payload.saihEstacionCodigo).trim() : null;
         const saihIdPunto = payload?.saihIdPunto ? String(payload.saihIdPunto).trim() : null;
 
+        const demandaUrbanaMensual = this.parseNumero(payload?.demandaUrbanaMensual);
+        const demandaAgrariaMensual = payload?.demandaAgrariaMensual ? payload.demandaAgrariaMensual : null;
+        const caudalEcologicoMensual = payload?.caudalEcologicoMensual ? payload.caudalEcologicoMensual : null;
+        const evaporacionMensual = payload?.evaporacionMensual ? payload.evaporacionMensual : null;
+        const curvaSuperficie = payload?.curvaSuperficie ? payload.curvaSuperficie : null;
+        const umbralesSequiaAgraria = payload?.umbralesSequiaAgraria ? payload.umbralesSequiaAgraria : null;
+
         const sensores = Array.isArray(payload?.sensores) ? payload.sensores : [];
         const compuertas = Array.isArray(payload?.compuertas) ? payload.compuertas : [];
         const senalesAsignadas = Array.isArray(payload?.senalesAsignadas) ? payload.senalesAsignadas : [];
@@ -49,7 +56,13 @@ class EmbalseRepository {
                     cotaMaximaM,
                     cotaMinimaM,
                     saihEstacionCodigo,
-                    saihIdPunto
+                    saihIdPunto,
+                    demandaUrbanaMensual,
+                    demandaAgrariaMensual,
+                    caudalEcologicoMensual,
+                    evaporacionMensual,
+                    curvaSuperficie,
+                    umbralesSequiaAgraria
                 }
             });
 
@@ -174,6 +187,13 @@ class EmbalseRepository {
         const saihEstacionCodigo = payload?.saihEstacionCodigo ? String(payload.saihEstacionCodigo).trim() : null;
         const saihIdPunto = payload?.saihIdPunto ? String(payload.saihIdPunto).trim() : null;
 
+        const demandaUrbanaMensual = this.parseNumero(payload?.demandaUrbanaMensual);
+        const demandaAgrariaMensual = payload?.demandaAgrariaMensual ? payload.demandaAgrariaMensual : null;
+        const caudalEcologicoMensual = payload?.caudalEcologicoMensual ? payload.caudalEcologicoMensual : null;
+        const evaporacionMensual = payload?.evaporacionMensual ? payload.evaporacionMensual : null;
+        const curvaSuperficie = payload?.curvaSuperficie ? payload.curvaSuperficie : null;
+        const umbralesSequiaAgraria = payload?.umbralesSequiaAgraria ? payload.umbralesSequiaAgraria : null;
+
         const sensores = Array.isArray(payload?.sensores) ? payload.sensores : [];
         const compuertas = Array.isArray(payload?.compuertas) ? payload.compuertas : [];
         const senalesAsignadas = Array.isArray(payload?.senalesAsignadas) ? payload.senalesAsignadas : [];
@@ -188,6 +208,12 @@ class EmbalseRepository {
                 cotaMinimaM,
                 saihEstacionCodigo,
                 saihIdPunto,
+                demandaUrbanaMensual,
+                demandaAgrariaMensual,
+                caudalEcologicoMensual,
+                evaporacionMensual,
+                curvaSuperficie,
+                umbralesSequiaAgraria
             },
             });
 
@@ -323,6 +349,21 @@ class EmbalseRepository {
         }
 
         return embalse;
+    }
+
+    static async cambiarEstado(embalseId, activo) {
+        const embalse = await prisma.embalse.findUnique({
+            where: { id: parseInt(embalseId) }
+        });
+
+        if (!embalse || embalse.eliminado) {
+            throw new Error('Embalse no encontrado o eliminado');
+        }
+
+        return prisma.embalse.update({
+            where: { id: parseInt(embalseId) },
+            data: { activo: Boolean(activo) }
+        });
     }
 
     static async eliminarLogico(embalseId) {

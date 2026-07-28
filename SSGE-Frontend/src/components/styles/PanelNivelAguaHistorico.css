@@ -8,11 +8,16 @@
   --dot-radius: 4;
   --tick-font-size: 12px;
   
-  height: 350px;
+  grid-column: 1;
+  grid-row: 2;
+  background-color: var(--app-panel);
+  border-radius: 8px;
+  padding: 1.5rem 0;
+  border: 1px solid var(--app-border);
+  min-height: 460px;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
 }
 
 .historico-header {
@@ -46,18 +51,26 @@
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--muted);
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
   font-size: 0.9rem;
+  font-weight: 600;
+  transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .historico-btn:hover {
   border-color: var(--accent-color);
+  transform: translateY(-2px); 
+  opacity: 0.9;
+}
+
+.historico-btn:active {
+  transform: translateY(0);
 }
 
 .historico-btn.active {
-  background: var(--accent-color);
+  background-color: var(--accent-color);
   border-color: var(--accent-color);
-  color: #fff;
+  color: #0f172a;
+  opacity: 1; 
 }

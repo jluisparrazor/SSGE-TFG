@@ -1,8 +1,8 @@
 .aniadirEmbalse-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2vw;
-  align-items: start;
+  gap: 1.5rem;
+  align-items: stretch;
   font-family: var(--sans);
 }
 
@@ -114,7 +114,7 @@
   border: 1px solid var(--app-border);
   color: var(--app-text);
   padding: 0.6rem 0.75rem;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 0.95rem;
   font-family: inherit;
   transition: border-color 0.2s ease, background-color 0.2s ease;
@@ -138,18 +138,28 @@
 
 .btn-guardar {
   padding: 0.6rem 1.5rem;
-  border-radius: 20px;
+  border-radius: 8px;
   border: none;
   background-color: var(--app-accent);
-  color: #000;
+  color: #0f172a;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .btn-guardar:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.btn-guardar:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.btn-guardar:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 
@@ -184,7 +194,7 @@
     gap: 0.75rem;
     background: var(--app-panel-2);
     border: 1px solid var(--app-border);
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 0.85rem;
 }
 
@@ -329,7 +339,7 @@ gap: 0.6rem;
   border: 1px solid var(--app-border);
   color: var(--app-text);
   padding: 0.5rem 0.65rem;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .PanelSaih-senales {
@@ -350,7 +360,6 @@ gap: 0.6rem;
 
 .PanelSaih-senal-item-selected {
   border-color: rgba(34, 211, 238, 0.25);
-  background: linear-gradient(180deg, rgba(8,47,73,0.5), var(--app-panel-2));
 }
 
 .PanelSaih-senal-content {
@@ -407,7 +416,7 @@ gap: 0.6rem;
   flex-direction: column;
   gap: 1rem;
   align-self: stretch;
-  max-height: 520px; 
+  min-height: 0;
   overflow: hidden; 
 }
 
@@ -425,15 +434,24 @@ gap: 0.6rem;
 
 .Sensores-btn {
   padding: 0.5rem 1rem;
-  background-color: var(--app-accent);
-  color: #000;
-  border: none;
-  border-radius: 6px;
+  background-color: transparent; 
+  color: var(--app-accent); 
+  border: 1px solid var(--app-accent); 
+  border-radius: 8px;
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
   white-space: nowrap;
+}
+
+.Sensores-btn:hover {
+  background-color: rgba(6, 182, 212, 0.1); /* Fondo cyan clarito al pasar el ratón */
+  transform: translateY(-2px);
+}
+
+.Sensores-btn:active {
+  transform: translateY(0);
 }
 
 .Sensores-list {
@@ -523,7 +541,7 @@ gap: 0.6rem;
   color: #fca5a5;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -549,7 +567,7 @@ gap: 0.6rem;
   font-size: 0.95rem;
   font-weight: 500;
   padding: 0.45rem 0.6rem;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .Sensor-name-select:focus {
@@ -587,35 +605,28 @@ gap: 0.6rem;
 
 .btn-guardar-footer {
   padding: 0.7rem 2rem;
-  border-radius: 20px;
+  border-radius: 8px;
   border: none;
   background-color: var(--app-accent);
-  color: #000;
+  color: #0f172a;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.btn-guardar,
-.Sensores-btn,
-.btn-guardar-footer,
-.PanelSaih-senal-btn {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.btn-guardar:hover:not(:disabled),
-.Sensores-btn:hover,
-.btn-guardar-footer:hover:not(:disabled),
-.PanelSaih-senal-btn:hover:not(.PanelSaih-senal-btn-selected) {
+.btn-guardar-footer:hover:not(:disabled) {
   opacity: 0.9;
   transform: translateY(-2px);
 }
 
-.btn-guardar:active,
-.Sensores-btn:active,
-.btn-guardar-footer:active {
+.btn-guardar-footer:active:not(:disabled) {
   transform: translateY(0);
+}
+
+.btn-guardar-footer:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Modal de éxito */
@@ -635,7 +646,7 @@ gap: 0.6rem;
   width: min(92vw, 430px);
   background: var(--app-panel);
   border: 1px solid var(--app-border);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 1.6rem 1.3rem;
   text-align: center;
   box-shadow: 0 18px 50px rgba(2, 6, 23, 0.45);
@@ -673,10 +684,10 @@ gap: 0.6rem;
 
 .modal-boton {
   border: none;
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 0.58rem 1.4rem;
   background: var(--app-accent);
-  color: #000;
+  color: #0f172a;
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -689,4 +700,28 @@ gap: 0.6rem;
 
 .modal-boton:active {
   transform: translateY(0);
+}
+
+/* --- Estilos para la tarjeta del Gemelo Digital --- */
+.Gemelo-card {
+  grid-column: 1 / -1;
+}
+
+.gemelo-desc {
+  color: var(--app-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  margin-top: -0.5rem;
+}
+
+.gemelo-textarea {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  min-height: 60px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.gemelo-textarea--tall {
+  min-height: 100px;
 }

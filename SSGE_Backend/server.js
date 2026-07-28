@@ -10,6 +10,7 @@ const { Server } = require('socket.io');
 const { prisma, pool } = require('./src/lib/prisma');
 const MedicionRepository = require('./src/services/MedionRepository');
 const EmbalseRepository = require('./src/services/EmbalseRepository');
+const { simularEscenarioManual, simularEscenarioHistorico } = require('./src/services/MotorSimulacion');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -296,6 +297,339 @@ app.get('/api/mediciones', async (req, res) => {
 	}
 });
 
+//Endpoint para cargar datos del SAIH en un rango para la Simulación histórico
+app.post('/api/ingesta/cargar-rango', requireAuth, requireRole('ADMIN', 'OPERADOR'), async (req, res) => {
+  try {
+    const { embalseId, estacionCodigo, desde, hasta } = req.body;
+
+    if (!embalseId || !estacionCodigo || !desde || !hasta) {
+      return res.status(400).json({ error: 'Faltan parámetros obligatorios' });
+    }
+
+    // 1. Buscamos el nombre del embalse para armar el payload de guardado
+    const embalse = await prisma.embalse.findUnique({
+      where: { id: Number(embalseId) }
+    });
+
+    if (!embalse) {
+      return res.status(404).json({ error: 'Embalse no encontrado' });
+    }
+
+    // 2. El input type="date" envía YYYY-MM-DD. El SAIH necesita DD/MM/YYYY.
+    const formatFechaSAIH = (fechaStr) => {
+      const [yyyy, mm, dd] = fechaStr.split('-');
+      return `${dd}/${mm}/${yyyy}`;
+    };
+    const strDesde = formatFechaSAIH(desde);
+    const strHasta = formatFechaSAIH(hasta);
+
+    // 3. Importamos dinámicamente tu SDK de scraping
+    const scraperDir = obtenerDirectorioScraper();
+    const { obtenerDatosEstacion } = require(path.join(scraperDir, 'saih_sdk.js'));
+
+    // 4. Invocamos al scraper
+    const datosNuevos = await obtenerDatosEstacion(estacionCodigo, strDesde, strHasta);
+
+    if (!datosNuevos || datosNuevos.length === 0) {
+      return res.json({ 
+        ok: true, 
+        mensaje: 'La CHG no devolvió datos para este rango.', 
+        registrosNuevos: 0 
+      });
+    }
+
+    // 5. Filtramos filas vacías o inválidas (como haces en poblar_historico)
+    const datosValidos = datosNuevos.filter(
+      (fila) =>
+        fila['NIVEL EMBALSE (m.s.n.m)'] &&
+        fila['NIVEL EMBALSE (m.s.n.m)'].trim() !== '' &&
+        fila['Fecha y Hora'] &&
+        fila['Fecha y Hora'].trim() !== ''
+    );
+
+    // 6. Guardamos en BD utilizando tu repositorio existente
+    let registrosGuardados = 0;
+    for (const fila of datosValidos) {
+      const payload = {
+        origen: 'SAIH_CHG_HISTORICO_ONDEMAND',
+        embalse: embalse.nombre,
+        embalseId: embalse.id,
+        timestamp: fila['Fecha y Hora'].trim(),
+        mediciones: fila,
+      };
+
+      try {
+        await MedicionRepository.guardar(payload);
+        registrosGuardados++;
+      } catch (err) {
+        // Ignoramos si falla uno concreto (ej. ya existe en BD por una restricción UNIQUE)
+        console.warn(`Aviso al guardar histórico ${payload.timestamp}:`, err.message);
+      }
+    }
+
+    return res.json({ 
+      ok: true, 
+      mensaje: `Datos extraídos del SAIH correctamente.`,
+      registrosNuevos: registrosGuardados
+    });
+
+  } catch (error) {
+    console.error('Error cargando datos del SAIH bajo demanda:', error);
+    return res.status(500).json({ error: 'Error al comunicarse con el scraper o la base de datos' });
+  }
+});
+
+app.post('/api/simulacion/ejecutar', async (req, res) => {
+  try {
+    const { embalseId, estadoInicial, escenario } = req.body || {};
+
+    const embalseIdNumero = Number(embalseId);
+    if (!Number.isInteger(embalseIdNumero) || embalseIdNumero <= 0) {
+      return res.status(400).json({ error: 'embalseId debe ser un entero positivo' });
+    }
+
+    // Aceptamos tanto manual como historico
+    if (!escenario || !['manual', 'historico'].includes(escenario.tipo)) {
+      return res.status(400).json({ error: 'Tipo de escenario no válido' });
+    }
+
+    const embalse = await prisma.embalse.findFirst({
+      where: { id: embalseIdNumero, eliminado: false },
+      select: {
+        id: true,
+        nombre: true,
+        capacidadHm3: true,
+        cotaMaximaM: true,
+        cotaMinimaM: true,
+		demandaUrbanaMensual: true,
+        demandaAgrariaMensual: true,
+        caudalEcologicoMensual: true,
+        evaporacionMensual: true,
+        curvaSuperficie: true,
+        umbralesSequiaAgraria: true,
+      },
+    });
+
+    if (!embalse) {
+      return res.status(404).json({ error: 'Embalse no encontrado' });
+    }
+
+    let resultado;
+
+    if (escenario.tipo === 'manual') {
+      resultado = simularEscenarioManual({
+        embalse,
+        estadoInicial,
+        escenario,
+      });
+    } else {
+      // MODO HISTÓRICO: Consulta a la base de datos
+      const fechaDesde = new Date(escenario.desde);
+      const fechaHasta = new Date(escenario.hasta);
+      fechaHasta.setHours(23, 59, 59, 999);
+
+      const serieHistorica = await prisma.medicionHistorica.findMany({
+        where: {
+          embalseId: embalse.id,
+          timestamp: { gte: fechaDesde, lte: fechaHasta },
+        },
+        orderBy: { timestamp: 'asc' },
+        select: { timestamp: true, caudalEntrada: true, volumen: true, caudalSalida:true}
+      });
+
+      if (serieHistorica.length === 0) {
+        return res.status(404).json({ error: 'No hay datos históricos en ese rango.' });
+      }
+
+      resultado = simularEscenarioHistorico({
+        embalse,
+        estadoInicial,
+        serieHistorica,
+        escenario,
+      });
+    }
+
+    const resultadoGuardado = await prisma.resultadoSimulacion.create({
+      data: {
+        tipo: resultado.tipo,
+        embalseId: embalse.id,
+        parametrosInput: resultado.parametros,
+        proyeccion: resultado.proyeccion,
+        alertaMaxima: resultado.metricas.alertaMaxima,
+        duracionMin: Number(resultado.parametros.duracionMin) || 0,
+      },
+      select: { id: true, fechaEjecucion: true },
+    });
+
+    res.json({ ...resultado, id: resultadoGuardado.id, fechaEjecucion: resultadoGuardado.fechaEjecucion });
+  } catch (error) {
+    console.error('Error en ejecución:', error);
+    res.status(400).json({ error: error.message || 'Error en simulación' });
+  }
+});
+
+app.get('/api/simulaciones/:id/exportar', requireAuth, requireRole('ADMIN', 'OPERADOR', 'VISUALIZADOR'), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'ID de simulación inválido' });
+    }
+
+    const simulacion = await prisma.resultadoSimulacion.findUnique({
+      where: { id },
+      include: { embalse: true }
+    });
+
+    if (!simulacion) {
+      return res.status(404).json({ error: 'Simulación no encontrada' });
+    }
+
+    // Generamos el CSV a partir del JSON guardado
+    const proyeccion = simulacion.proyeccion || [];
+    
+    // Cabeceras del CSV
+    const cabeceras = [
+      'Paso', 'Minutos', 'Nivel (%)', 'Volumen (hm3)', 
+      'Entrada (m3/s)', 'Ecologico (m3/s)', 'Desembalse (m3/s)',
+      'Urbana Servida (hm3)', 'Agraria Servida (hm3)', 'Situacion'
+    ];
+
+    const filas = proyeccion.map(p => [
+      p.paso,
+      p.instanteMin,
+      p.nivelPorcentaje,
+      p.volumenHm3,
+      p.caudalEntradaM3s,
+      p.caudalEcologicoM3s,
+      p.desembalseSeguridadM3s,
+      p.demandaUrbanaServidaHm3,
+      p.demandaAgrariaServidaHm3,
+      p.riesgo
+    ]);
+
+    const csvContent = [
+      cabeceras.join(','),
+      ...filas.map(fila => fila.join(','))
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="simulacion_${id}_${simulacion.embalse.nombre.replace(/\s+/g, '_')}.csv"`);
+    
+    return res.send(csvContent);
+
+  } catch (error) {
+    console.error('Error al exportar simulación:', error.message);
+    return res.status(500).json({ error: 'Error al generar el archivo de exportación' });
+  }
+});
+
+app.get('/api/simulaciones', async (req, res) => {
+  try {
+    const embalseIdRaw = req.query.embalseId;
+    const embalseId = embalseIdRaw !== undefined ? Number(embalseIdRaw) : undefined;
+
+    if (embalseIdRaw !== undefined && (!Number.isInteger(embalseId) || embalseId <= 0)) {
+      return res.status(400).json({ error: 'embalseId debe ser un entero positivo' });
+    }
+
+    const resultados = await prisma.resultadoSimulacion.findMany({
+      where: embalseId ? { embalseId } : undefined,
+      orderBy: { fechaEjecucion: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        fechaEjecucion: true,
+        tipo: true,
+        alertaMaxima: true,
+        duracionMin: true,
+		parametrosInput: true,
+        embalse: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+	
+
+    res.json(resultados);
+  } catch (error) {
+    console.error('Error en GET /api/simulaciones:', error);
+    res.status(500).json({ error: error.message || 'Error DB' });
+  }
+});
+
+app.get('/api/simulaciones/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    const simulacion = await prisma.resultadoSimulacion.findUnique({
+      where: { id },
+      include: { embalse: true }
+    });
+
+    if (!simulacion) {
+      return res.status(404).json({ error: 'Simulación no encontrada' });
+    }
+
+    const proyeccion = simulacion.proyeccion || [];
+
+    // Recalculamos las métricas extraídas de la proyección guardada
+    const volumenTotalDesembalsadoHm3 = proyeccion.reduce((acc, p) => acc + (p.desembalseSeguridadHm3 || 0), 0);
+    const totalUrbanaObjetivo = proyeccion.reduce((acc, p) => acc + (p.demandaUrbanaObjetivoHm3 || 0), 0);
+    const totalUrbanaServida = proyeccion.reduce((acc, p) => acc + (p.demandaUrbanaServidaHm3 || 0), 0);
+    const totalAgrariaObjetivo = proyeccion.reduce((acc, p) => acc + (p.demandaAgrariaObjetivoHm3 || 0), 0);
+    const totalAgrariaServida = proyeccion.reduce((acc, p) => acc + (p.demandaAgrariaServidaHm3 || 0), 0);
+
+    const metricas = {
+      alertaMaxima: simulacion.alertaMaxima,
+      volumenTotalDesembalsadoHm3: Number(volumenTotalDesembalsadoHm3.toFixed(4)),
+      demandaUrbanaSatisfechaPct: totalUrbanaObjetivo > 0 ? Number(((totalUrbanaServida / totalUrbanaObjetivo) * 100).toFixed(2)) : 100,
+      demandaAgrariaSatisfechaPct: totalAgrariaObjetivo > 0 ? Number(((totalAgrariaServida / totalAgrariaObjetivo) * 100).toFixed(2)) : 100,
+    };
+
+    return res.json({
+      id: simulacion.id,
+      fechaEjecucion: simulacion.fechaEjecucion,
+      tipo: simulacion.tipo,
+      embalse: simulacion.embalse,
+      parametros: simulacion.parametrosInput,
+      proyeccion: proyeccion,
+      metricas: metricas
+    });
+
+  } catch (error) {
+    console.error('Error al obtener la simulación:', error.message);
+    return res.status(500).json({ error: 'Error al recuperar la simulación' });
+  }
+});
+
+app.delete('/api/simulaciones/:id', requireAuth, requireRole('ADMIN', 'OPERADOR'), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'ID de simulación inválido' });
+    }
+
+    // Prisma permite borrar directamente por el ID
+    await prisma.resultadoSimulacion.delete({
+      where: { id }
+    });
+
+    return res.json({ message: 'Simulación eliminada correctamente' });
+  } catch (error) {
+    if (error?.code === 'P2025') {
+      return res.status(404).json({ error: 'La simulación no existe' });
+    }
+    console.error('Error en DELETE /api/simulaciones/:id:', error.message);
+    return res.status(500).json({ error: 'Error al eliminar la simulación' });
+  }
+});
+
 app.get('/api/historial-simulacion', async (req, res) => {
   try {
     const embalseIdRaw = req.query.embalseId;
@@ -402,6 +736,34 @@ app.delete('/api/embalses/:id', requireAuth, requireRole('ADMIN', 'OPERADOR'), a
         res.status(400).json({ 
             message: error.message || 'Error al eliminar embalse',
             error: error.message 
+        });
+    }
+});
+
+// PATCH /api/embalses/:id/estado - Activar o Desactivar embalse
+app.patch('/api/embalses/:id/estado', requireAuth, requireRole('ADMIN', 'OPERADOR'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { activo } = req.body;
+        
+        if (!id || isNaN(id)) {
+            return res.status(400).json({ error: 'ID inválido' });
+        }
+
+        if (typeof activo !== 'boolean') {
+            return res.status(400).json({ error: 'El campo activo debe ser un booleano' });
+        }
+
+        const embalseActualizado = await EmbalseRepository.cambiarEstado(id, activo);
+        
+        res.json({
+            message: `Embalse ${activo ? 'activado' : 'desactivado'} correctamente`,
+            embalse: embalseActualizado
+        });
+    } catch (error) {
+        console.error('Error en PATCH /api/embalses/:id/estado:', error);
+        res.status(400).json({ 
+            error: error.message || 'Error al cambiar el estado del embalse' 
         });
     }
 });

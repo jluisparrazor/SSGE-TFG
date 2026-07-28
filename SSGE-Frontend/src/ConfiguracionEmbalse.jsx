@@ -61,6 +61,29 @@ function ConfiguracionEmbalse() {
     setEmbalseAEliminar(embalse);
   };
 
+  const handleToggleActivo = async (embalseId, estadoActual) => {
+    try {
+        const nuevoEstado = !estadoActual;
+        const res = await apiFetch(`/api/embalses/${embalseId}/estado`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activo: nuevoEstado })
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Error al cambiar el estado');
+        }
+
+        setEmbalses(embalses.map(emb => 
+            emb.id === embalseId ? { ...emb, activo: nuevoEstado } : emb
+        ));
+    } catch (error) {
+        console.error("Error al cambiar estado:", error);
+        alert(error.message);
+    }
+  };
+
   const confirmarEliminar = async () => {
     if (!embalseAEliminar) return;
     
@@ -201,24 +224,37 @@ function ConfiguracionEmbalse() {
             ) : (
               <div className="config-embalse-list">
                 {embalses.map((embalse) => (
-                    <div key={embalse.id} className="config-embalse-item">
-                        <span className="config-embalse-name">{embalse.nombre}</span>
-                        <button
-                            type="button"
-                            className="btn-guardar config-embalse-edit-btn"
-                            onClick={() => navigate(`/aniadir-embalse?id=${embalse.id}`)}
-                        >
-                            Editar
-                        </button>
-                        <button
+                  <div 
+                    key={embalse.id} 
+                    className={`config-embalse-item ${!embalse.activo ? 'config-embalse-item--desactivado' : ''}`}
+                  >
+                    <div className="config-embalse-name">
+                      {embalse.nombre} {!embalse.activo && '(Desactivado)'}
+                    </div>
+                    
+                    <button 
+                      className={`config-embalse-toggle-btn ${!embalse.activo ? 'config-embalse-toggle-btn--inactivo' : ''}`}
+                      onClick={() => handleToggleActivo(embalse.id, embalse.activo)}
+                    >
+                      {embalse.activo ? 'Desactivar' : 'Activar'}
+                    </button>
+
+                    <button
+                        type="button"
+                        className="btn-guardar config-embalse-edit-btn"
+                        onClick={() => navigate(`/aniadir-embalse?id=${embalse.id}`)}
+                    >
+                        Editar
+                    </button>
+                    <button
                         type="button"
                         className="config-embalse-delete-btn"
                         onClick={() => handleEliminarEmbalse(embalse)}
                         disabled={eliminando}
-                        >
-                        Eliminar
-                        </button>
-                    </div>
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 ))}
               </div>
             )}

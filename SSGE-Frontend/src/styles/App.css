@@ -30,7 +30,7 @@ main{
 .app-dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: minmax(520px, auto) auto;
+  grid-template-rows: minmax(520px, auto) minmax(460px, 1fr);
   gap: 2vw;
   align-items: stretch;
 }
@@ -183,21 +183,27 @@ main{
 .embalse-selector-wrap {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-}
-
-.embalse-selector-label {
-  color: #94a3b8;
-  font-size: 0.9rem;
 }
 
 .embalse-selector {
-  background-color: #0f172a;
-  color: var(--app-text);
+  background-color: var(--app-panel);
+  color: var(--app-accent);
   border: 1px solid var(--app-border);
-  padding: 0.45rem 0.7rem;
-  border-radius: 10px;
-  min-width: 230px;
+  padding: 0.7rem 1.2rem;
+  border-radius: 8px;
+  min-width: 280px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: none;
+}
+
+.embalse-selector:hover,
+.embalse-selector:focus {
+  border-color: var(--app-accent);
+  background-color: var(--app-panel-2);
 }
 
 .embalse-selector:disabled {
@@ -234,7 +240,8 @@ main{
   border-radius: 8px;
   padding: 1.5rem;
   border: 1px solid var(--app-border);
-  height: 35vh;
+  min-height: 460px; 
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -261,7 +268,7 @@ main{
   min-height: 220px;
   background-color: var(--app-panel-2);
   border: 1px solid var(--app-border);
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
 .alertas-card {
@@ -271,7 +278,8 @@ main{
   border-radius: 8px;
   padding: 1.5rem;
   border: 1px solid var(--app-border);
-  height: 35vh;
+  min-height: 460px; 
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -293,7 +301,7 @@ main{
 .alerta-item {
   border: 1px solid var(--app-border);
   padding: 1rem;
-  border-radius: 4px;
+  border-radius: 8px;
   background-color: var(--app-panel-2);
   display: flex;
   flex-direction: column;
@@ -339,3 +347,107 @@ main{
   font-size: 0.9rem;
   line-height: 1.4;
 }
+
+.alertas-content--no-scroll {
+  overflow: hidden;
+}
+
+.sensores-list--spaced {
+  margin-top: 0.5rem;
+}
+
+.sensor-unit-small {
+  font-size: 0.8rem;
+  color: var(--app-muted);
+}
+
+.sensor-empty-msg {
+  color: var(--app-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+/* =========================================
+   SISTEMA GLOBAL DE BOTONES
+========================================= */
+.btn-global {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px; /* Unificado en toda la app */
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.btn-global:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-global:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.btn-global:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* --- Variantes de Color --- */
+
+/* Acción Principal (Cyan) */
+.btn-primario {
+  background-color: var(--app-accent);
+  color: #0f172a;
+}
+.btn-primario:hover:not(:disabled) {
+  background-color: #22d3ee;
+  box-shadow: 0 4px 12px rgba(34, 211, 238, 0.2);
+}
+
+/* Acción Secundaria (Gris/Transparente) */
+.btn-secundario {
+  background-color: var(--app-panel-2);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+.btn-secundario:hover:not(:disabled) {
+  border-color: var(--app-muted);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Acción Destructiva (Rojo) */
+.btn-peligro {
+  background-color: #dc2626;
+  color: #ffffff;
+  border-color: #b42318;
+}
+.btn-peligro:hover:not(:disabled) {
+  background-color: #ef4444;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+/* Acción de Contorno (Borde Cyan) */
+.btn-outline {
+  background-color: transparent;
+  color: var(--app-accent);
+  border-color: rgba(34, 211, 238, 0.5);
+}
+.btn-outline:hover:not(:disabled) {
+  background-color: rgba(34, 211, 238, 0.1);
+  border-color: var(--app-accent);
+}
+
+option {
+  background-color: var(--app-panel-2);
+  color: var(--app-text);
+}
+

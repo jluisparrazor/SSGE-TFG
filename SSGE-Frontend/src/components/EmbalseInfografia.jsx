@@ -1,14 +1,17 @@
 import "./styles/EmbalseInfografia.css";
 import { TriangleAlert, CheckCircle } from 'lucide-react';
 
-function EmbalseInfografia({ datoActual = {},
+function EmbalseInfografia({ 
+  datoActual = {},
   embalseNombre = 'Embalse de Canales',
-  compuertas = []}) {
+  compuertas = [],
+  curvaSuperficie = [],
+  sensores = []
+}) {
   const cotaMax = datoActual.cotaMaximaM ?? 960;
   const cotaMin = datoActual.cotaMinimaM ?? 900;
   const rangoCotas = cotaMax - cotaMin;
 
-  // Ajuste del eje vertical para que la cota minima quede en la punta inferior visible del embalse.
   const Y_MAX_GRAFICO = 110;
   const Y_MIN_GRAFICO = 492;
   const Y_REGLA_TOP = Y_MAX_GRAFICO - 12;
@@ -65,16 +68,6 @@ function EmbalseInfografia({ datoActual = {},
     return cotaMax - (rangoCotas * fraccion);
   };
 
-  const resolverCaudalCompuerta = (compuerta) => {
-    const caudalFormulario = normalizarNumero(compuerta?.maximoCaudal);
-    if (caudalFormulario !== null) return caudalFormulario;
-    
-    const caudalBD = normalizarNumero(compuerta?.caudalSalidaActual);
-    if (caudalBD !== null) return caudalBD;
-
-    return 0;
-  };
-
   const nivelActual = normalizarNumero(datoActual?.nivel);
   const caudalSalidaTotal = normalizarNumero(datoActual?.caudalSalida) ?? 0;
   const compuertasSumergidas = compuertas.reduce((total, compuerta, idx) => {
@@ -83,60 +76,113 @@ function EmbalseInfografia({ datoActual = {},
   }, 0);
   const enAlerta = Number(datoActual?.porcentaje || 0) > 95;
 
-  const TERRENOS_EMBALSE = [
-  {
-    // 1. Garganta profunda: Empieza ALTÍSIMO (Y=50) y cae casi en picado.
-    contorno: 'M 0 100 L 50 150 L 120 260 L 200 380 L 280 480 L 360 560 L 420 590 L 465 600 L 0 600 Z',
-    base:     'M 0 110 L 50 160 L 120 270 L 200 390 L 280 490 L 360 570 L 420 600 L 465 600 L 0 600 Z'
-  },
-  {
-    // 2. Meseta alta: Empieza en 120, baja a un rellano donde se queda plano, y luego cae de nuevo.
-    contorno: 'M 0 120 L 40 300 L 120 320 L 220 330 L 280 420 L 340 520 L 400 580 L 465 600 L 0 600 Z',
-    base:     'M 0 130 L 40 310 L 120 330 L 220 340 L 280 430 L 340 530 L 400 590 L 465 600 L 0 600 Z'
-  },
-  {
-    // 3. Orilla baja y plana (Playa): Empieza MUY ABAJO (Y=320), es muy poco profundo hasta acercarse a la presa.
-    contorno: 'M 0 320 L 60 340 L 140 370 L 220 410 L 300 480 L 360 550 L 420 590 L 465 600 L 0 600 Z',
-    base:     'M 0 330 L 60 350 L 140 380 L 220 420 L 300 490 L 360 560 L 420 600 L 465 600 L 0 600 Z'
-  },
-  {
-    // 4. Baches irregulares: Empieza en 200 y tiene varias "colinas" y valles submarinos.
-    contorno: 'M 0 200 L 30 280 L 70 260 L 110 350 L 160 330 L 220 450 L 280 500 L 350 560 L 465 600 L 0 600 Z',
-    base:     'M 0 210 L 30 290 L 70 270 L 110 360 L 160 340 L 220 460 L 280 510 L 350 570 L 465 600 L 0 600 Z'
-  },
-  {
-    // 5. Cañón escalonado: Empieza alto (Y=100) y baja haciendo forma de terrazas o escaleras.
-    contorno: 'M 0 100 L 20 200 L 80 220 L 110 350 L 180 370 L 220 480 L 290 500 L 350 570 L 465 600 L 0 600 Z',
-    base:     'M 0 110 L 20 210 L 80 230 L 110 360 L 180 380 L 220 490 L 290 510 L 350 580 L 465 600 L 0 600 Z'
-  },
-  {
-    // 6. Acantilado final: Empieza medio-bajo (Y=260) y aguanta plano mucho rato para caer de golpe al final.
-    contorno: 'M 0 260 L 80 280 L 180 300 L 260 340 L 320 450 L 360 550 L 400 590 L 465 600 L 0 600 Z',
-    base:     'M 0 270 L 80 290 L 180 310 L 260 350 L 320 460 L 360 560 L 400 600 L 465 600 L 0 600 Z'
-  },
-  {
-    // 7. Cóncavo clásico: Empieza en 140, con forma de cuenco suave y continuo.
-    contorno: 'M 0 140 L 40 260 L 90 360 L 150 450 L 220 520 L 310 570 L 400 590 L 465 600 L 0 600 Z',
-    base:     'M 0 150 L 40 270 L 90 370 L 150 460 L 220 530 L 310 580 L 400 600 L 465 600 L 0 600 Z'
-  },
-  {
-    // 8. Fosa y elevación: Empieza en 180, baja, hace un agujero, y luego sube un poco antes de la presa.
-    contorno: 'M 0 180 L 50 380 L 120 450 L 200 460 L 260 440 L 320 500 L 380 570 L 465 600 L 0 600 Z',
-    base:     'M 0 190 L 50 390 L 120 460 L 200 470 L 260 450 L 320 510 L 380 580 L 465 600 L 0 600 Z'
-  },
-  {
+  // --- NUEVA FUNCIÓN DE ESCULPIDO DINÁMICO ---
+  const generarTerrenoDinamico = (curvaSuperficie) => {
+    // Terreno por defecto por si el embalse aún no tiene curva en BD
+    const terrenoFallback = {
       contorno: 'M 0 250 L 50 250 L 90 300 L 150 300 L 220 345 L 280 360 L 320 392 L 360 430 L 465 600 L 0 600 Z',
       base: 'M 0 260 L 50 260 L 90 310 L 150 310 L 220 355 L 280 370 L 320 402 L 360 440 L 465 600 L 0 600 Z'
-  },
-  {
-    // 10. Doble onda suave: Empieza en 240 y desciende haciendo una forma de "S" sutil.
-    contorno: 'M 0 240 L 40 300 L 80 280 L 130 360 L 180 340 L 240 440 L 290 420 L 350 520 L 410 580 L 465 600 L 0 600 Z',
-    base:     'M 0 250 L 40 310 L 80 290 L 130 370 L 180 350 L 240 450 L 290 430 L 350 530 L 410 590 L 465 600 L 0 600 Z'
+    };
+
+    if (!curvaSuperficie || !Array.isArray(curvaSuperficie) || curvaSuperficie.length < 2) {
+      return terrenoFallback;
+    }
+
+    // Ordenar de menor a mayor volumen
+    const curva = [...curvaSuperficie].sort((a, b) => a.vol - b.vol);
+    const vMax = curva[curva.length - 1].vol;
+    const sMax = curva[curva.length - 1].sup;
+
+    if (vMax === 0 || sMax === 0) return terrenoFallback;
+
+    const RANGO_Y = Y_MIN_GRAFICO - Y_MAX_GRAFICO;
+    const ANCHO_MAX = 465; // Límite donde choca con el muro de la presa
+
+    let pathPuntos = '';
+    let basePuntos = '';
+
+    // Pintamos de arriba (100% de capacidad) hacia abajo (fondo)
+    for (let i = curva.length - 1; i >= 0; i--) {
+      const punto = curva[i];
+      
+      // X = Raíz cuadrada de la superficie para simular perspectiva 2D en perfil
+      const ratioX = Math.sqrt(punto.sup / sMax);
+      const x = ANCHO_MAX - (ANCHO_MAX * ratioX);
+
+      // Y = Raíz cúbica del volumen para simular la altura
+      const ratioY = Math.cbrt(punto.vol / vMax);
+      const y = Y_MIN_GRAFICO - (RANGO_Y * ratioY);
+
+      pathPuntos += ` L ${Math.max(0, x).toFixed(1)} ${y.toFixed(1)}`;
+      basePuntos += ` L ${Math.max(0, x).toFixed(1)} ${(y + 10).toFixed(1)}`;
+    }
+
+    // Cerramos el polígono conectando con la base del muro (465, 600) y volviendo a la izquierda (0, 600)
+    const contorno = `M 0 ${Y_MAX_GRAFICO} ${pathPuntos} L 465 600 L 0 600 Z`;
+    const base = `M 0 ${Y_MAX_GRAFICO + 10} ${basePuntos} L 465 600 L 0 600 Z`;
+
+    return { contorno, base };
+  };
+
+  // Esculpimos el embalse en función de sus datos físicos
+  // Asegurarnos de que tenemos un Array nativo, venga como venga de la BD
+  let curvaParseada = curvaSuperficie; // O datoActual.curvaSuperficie si prefieres no cambiar los props
+  
+  if (typeof curvaParseada === 'string') {
+    try {
+      curvaParseada = JSON.parse(curvaParseada);
+    } catch (error) {
+      console.error("Error al parsear la curvaSuperficie:", error);
+      curvaParseada = null;
+    }
   }
-];
 
+  // Ahora sí, esculpimos el embalse con datos limpios
+  const terrenoElegido = generarTerrenoDinamico(curvaParseada);
 
-  const terrenoElegido = TERRENOS_EMBALSE[8];
+  // --- LÓGICA ANTI-SOLAPAMIENTO PARA SENSORES ---
+  const getSensoresAntiSolapamiento = () => {
+    if (!sensores || sensores.length === 0) return [];
+    
+    // 1. Calcular Y real y asignar valores simulados
+    const mapeados = sensores.map(sensor => {
+      const yReal = calcularPosicionY(sensor.valorActual);
+      let valorSimulado = '--';
+      let unidad = '';
+      
+      if (sensor.tipo === 'Oxígeno') { valorSimulado = '8.2'; unidad = 'mg/L'; }
+      else if (sensor.tipo === 'Temperatura') { valorSimulado = '21.5'; unidad = '°C'; }
+      else if (sensor.tipo === 'Turbidez') { valorSimulado = '14.3'; unidad = 'NTU'; }
+
+      return { ...sensor, yReal, labelY: yReal, valorSimulado, unidad };
+    });
+
+    // 2. Ordenar de arriba a abajo (La Y crece hacia abajo en el SVG)
+    mapeados.sort((a, b) => a.yReal - b.yReal);
+
+    // 3. Empujar hacia abajo si chocan (Mínimo 45px de espacio vital)
+    const ESPACIO = 45;
+    for (let i = 1; i < mapeados.length; i++) {
+      if (mapeados[i].labelY < mapeados[i - 1].labelY + ESPACIO) {
+        mapeados[i].labelY = mapeados[i - 1].labelY + ESPACIO;
+      }
+    }
+
+    // 4. Si la cadena de choques saca el último sensor por debajo del suelo, empujar todo hacia arriba
+    const Y_MAX_PERMITIDO = Y_MIN_GRAFICO - 20;
+    if (mapeados[mapeados.length - 1].labelY > Y_MAX_PERMITIDO) {
+      mapeados[mapeados.length - 1].labelY = Y_MAX_PERMITIDO;
+      for (let i = mapeados.length - 2; i >= 0; i--) {
+        if (mapeados[i].labelY > mapeados[i + 1].labelY - ESPACIO) {
+          mapeados[i].labelY = mapeados[i + 1].labelY - ESPACIO;
+        }
+      }
+    }
+
+    return mapeados;
+  };
+
+  const sensoresDibujar = getSensoresAntiSolapamiento();
 
   return (
     <div className="embalse-card">
@@ -174,6 +220,7 @@ function EmbalseInfografia({ datoActual = {},
             className="embalse-water"
           />
 
+          {/* Renderizado dinámico del suelo del embalse */}
           <path className="embalse-terreno-contorno" d={terrenoElegido.contorno} />
           <path className="embalse-terreno-base" d={terrenoElegido.base} />
           <path className="embalse-muro" d="M 465 600 L 515 100 L 545 100 L 725 600 Z" />
@@ -203,6 +250,32 @@ function EmbalseInfografia({ datoActual = {},
             </text>
           </g>
 
+          {/*MARCADORES DE SENSORES*/}
+          {sensoresDibujar.length > 0 && (
+            <g className="embalse-sensores-marcadores">
+              {sensoresDibujar.map((sensor, idx) => (
+                <g key={`sensor-grafico-${idx}`}>
+                  <g transform={`translate(280, ${sensor.labelY})`}>
+                    <rect x="0" y="-18" width="120" height="36" rx="4" className="embalse-sensor-bg" />
+                    <text x="60" y="-3" className="embalse-sensor-texto">
+                      {sensor.tipo}
+                    </text>
+                    <text x="60" y="11" className="embalse-sensor-texto" style={{ fontSize: '10px', fill: '#f8fafc' }}>
+                      {sensor.valorSimulado} {sensor.unidad}
+                    </text>
+                  </g>
+                  <polyline 
+                    points={`400,${sensor.labelY} 430,${sensor.yReal} 465,${sensor.yReal}`} 
+                    className="embalse-sensor-linea" 
+                    fill="none" 
+                  />
+                  
+                  <circle cx="465" cy={sensor.yReal} r="4" className="embalse-sensor-punto" />
+                </g>
+              ))}
+            </g>
+          )}
+
           <g transform="translate(60, 40)">
             <g className={datoActual.caudalEntrada > 0 ? 'embalse-flujo-activo' : 'embalse-flujo-inactivo'}>
               <path className="embalse-entrada-path" d="M 40 0 Q 80 0 80 40">
@@ -217,16 +290,14 @@ function EmbalseInfografia({ datoActual = {},
           </g>
 
           <g>
-            {/* Renderizar múltiples salidas basadas en compuertas */}
             {compuertas.length > 0 ? (
               compuertas.map((compuerta, idx) => {
                 const cotaCompuerta = resolverCotaCompuerta(compuerta, idx);
-                // Si el nivel no alcanza la cota de la toma, no puede haber salida por esa compuerta.
                 const tomaSumergida = nivelActual !== null && nivelActual >= cotaCompuerta;
                 const caudal = tomaSumergida && compuertasSumergidas > 0
                   ? caudalSalidaTotal / compuertasSumergidas
                   : 0;
-                const ySalida = calcularPosicionY(cotaCompuerta); // Calcular Y según la cota
+                const ySalida = calcularPosicionY(cotaCompuerta); 
                 
                 return (
                   <g key={`salida-${idx}`} transform={`translate(0, ${ySalida})`}>
@@ -246,7 +317,6 @@ function EmbalseInfografia({ datoActual = {},
                 );
               })
             ) : (
-              // Si no hay compuertas, mostrar salida por defecto
               <g transform="translate(0, 420)">
                 <path className="embalse-salida-base" d="M 455 0 L 760 0" />
                 <path className="embalse-salida-canal" d="M 455 0 L 760 0" />
