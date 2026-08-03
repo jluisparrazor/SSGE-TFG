@@ -1,0 +1,76 @@
+.historico-card {
+  --panel-bg: #0f172a;
+  --border-color: #334155;
+  --accent-color: #06b6d4;
+  --muted: #94a3b8;
+  --line-stroke: #38bdf8;
+  --line-width: 2;
+  --dot-radius: 4;
+  --tick-font-size: 12px;
+  
+  grid-column: 1;
+  grid-row: 2;
+  background-color: var(--app-panel);
+  border-radius: 8px;
+  padding: 1.5rem 0;
+  border: 1px solid var(--app-border);
+  min-height: 460px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.historico-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;  
+  height: 20px;   
+}
+
+.historico-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--accent-color); 
+}
+
+.historico-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.historico-chart {
+  flex: 1 1 auto;
+  min-height: 260px;
+  min-width: 0;
+  width: 100%;
+}
+
+.historico-btn {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--muted);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.historico-btn:hover {
+  border-color: var(--accent-color);
+  transform: translateY(-2px); 
+  opacity: 0.9;
+}
+
+.historico-btn:active {
+  transform: translateY(0);
+}
+
+.historico-btn.active {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #0f172a;
+  opacity: 1; 
+}

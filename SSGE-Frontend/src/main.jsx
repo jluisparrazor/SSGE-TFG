@@ -2,12 +2,14 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import "./styles/index.css";
-import App from './App.jsx'
-import AniadirEmbalse from './AniadirEmbalse.jsx';
-import Simulacion from './Simulacion.jsx';
-import ConfiguracionEmbalse from './ConfiguracionEmbalse.jsx';
-import InicioSesion from './Login.jsx';
-import GestionUsuarios from './GestionUsuarios.jsx';
+import Dashboard from './pages/Dashboard/Dashboard.jsx'
+import AniadirEmbalse from './pages/AniadirEmbalse/AniadirEmbalse.jsx';
+import Simulacion from './pages/Simulacion/Simulacion.jsx';
+import ConfiguracionEmbalse from './pages/ConfiguracionEmbalse/ConfiguracionEmbalse.jsx';
+import ReglasDifusas from './pages/ReglasDifusas/ReglasDifusas.jsx';
+import InicioSesion from './pages/Login/Login.jsx';
+import GestionUsuarios from './pages/GestionUsuarios/GestionUsuarios.jsx';
+import AuditoriaGlobal from './pages/Auditoria/AuditoriaGlobal.jsx';
 import { getToken, isRoleAllowed } from './lib/api.js';
 
 function RequireAuth({ children, allowedRoles = [] }) {
@@ -41,7 +43,7 @@ function LoginOverlayRoute() {
 
   return (
     <div className="inicio-sesion-ruta-contenedor">
-      <App />
+      <Dashboard />
       <div className="inicio-sesion-ruta-superposicion">
         <InicioSesion modal />
       </div>
@@ -59,7 +61,7 @@ createRoot(document.getElementById('root')).render(
         />
         <Route
           path="/"
-          element={<App />}
+          element={<Dashboard />}
         />
         <Route
           path="/aniadir-embalse"
@@ -82,6 +84,14 @@ createRoot(document.getElementById('root')).render(
           )}
         />
         <Route
+          path="/reglas-difusas"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN', 'OPERADOR']}>
+              <ReglasDifusas />
+            </RequireAuth>
+          )}
+        />
+        <Route
           path="/gestion-usuarios"
           element={(
             <RequireAuth allowedRoles={['ADMIN']}>
@@ -89,6 +99,15 @@ createRoot(document.getElementById('root')).render(
             </RequireAuth>
           )}
         />
+        <Route
+          path="/auditoria-global"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN']}>
+              <AuditoriaGlobal />
+            </RequireAuth>
+          )}
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

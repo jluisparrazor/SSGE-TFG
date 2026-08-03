@@ -15,6 +15,6 @@
     "sourceMap": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "prisma.config.ts"],
+  "include": ["src/**/*", "prisma.config.ts", "../SSGE-Frontend/src/utils"],
   "exclude": ["node_modules", "dist"]
 }

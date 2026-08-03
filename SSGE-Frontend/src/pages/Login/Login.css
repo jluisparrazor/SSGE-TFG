@@ -1,0 +1,344 @@
+.inicio-sesion-pagina {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(1200px 520px at 15% -10%, rgba(6, 182, 212, 0.2), transparent 60%),
+    radial-gradient(900px 420px at 85% 120%, rgba(14, 165, 233, 0.16), transparent 62%),
+    var(--app-bg);
+  padding: 1.2rem;
+}
+
+.inicio-sesion-pagina--modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  padding: 2rem;
+}
+
+.inicio-sesion-ruta-contenedor {
+  position: relative;
+  min-height: 100dvh;
+}
+
+.inicio-sesion-ruta-superposicion {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(2, 6, 23, 0.28);
+  backdrop-filter: blur(12px) saturate(110%);
+  -webkit-backdrop-filter: blur(12px) saturate(110%);
+}
+
+.inicio-sesion-ruta-superposicion .inicio-sesion-pagina {
+  min-height: auto;
+  width: 100%;
+  background: transparent;
+}
+
+.inicio-sesion-fondo {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(900px 480px at 20% 15%, rgba(6, 182, 212, 0.14), transparent 58%),
+    radial-gradient(800px 420px at 80% 85%, rgba(14, 165, 233, 0.12), transparent 60%),
+    rgba(2, 6, 23, 0.24);
+  pointer-events: none;
+}
+
+.inicio-sesion-brillo-fondo {
+  position: absolute;
+  width: 380px;
+  height: 380px;
+  filter: blur(70px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.inicio-sesion-brillo-fondo--superior {
+  top: -140px;
+  right: -90px;
+  background: rgba(14, 165, 233, 0.35);
+}
+
+.inicio-sesion-brillo-fondo--inferior {
+  left: -130px;
+  bottom: -170px;
+  background: rgba(6, 182, 212, 0.32);
+}
+
+.inicio-sesion-tarjeta {
+  position: relative;
+  width: min(460px, 92vw);
+  border: 1px solid var(--app-border);
+  background: var(--app-panel);
+  border-radius: 8px; 
+  padding: 1.35rem;
+  box-shadow: 0 22px 48px rgba(2, 6, 23, 0.45);
+}
+
+.inicio-sesion-tarjeta--modal {
+  width: min(680px, 94vw);
+  padding: 2rem 2.2rem;
+  border-radius: 8px;
+  background: var(--app-bg);
+  box-shadow: 0 28px 72px rgba(2, 6, 23, 0.58);
+}
+
+.inicio-sesion-marca {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.2rem;
+}
+
+.inicio-sesion-tarjeta--modal .inicio-sesion-marca {
+  margin-bottom: 1.6rem;
+}
+
+.inicio-sesion-logo {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.inicio-sesion-tarjeta--modal .inicio-sesion-logo {
+  width: 72px;
+  height: 72px;
+}
+
+.inicio-sesion-titulo {
+  margin: 0;
+  color: var(--app-text);
+  line-height: 1;
+  font-size: 2.05rem;
+}
+
+.inicio-sesion-tarjeta--modal .inicio-sesion-titulo {
+  font-size: 2.45rem;
+}
+
+.inicio-sesion-subtitulo {
+  margin-top: 0.3rem;
+  color: var(--app-muted);
+  font-size: 0.93rem;
+}
+
+.inicio-sesion-tarjeta--modal .inicio-sesion-subtitulo {
+  font-size: 1rem;
+}
+
+.inicio-sesion-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.inicio-sesion-tarjeta--modal .inicio-sesion-formulario {
+  gap: 1.05rem;
+}
+
+.inicio-sesion-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+}
+
+.inicio-sesion-campo-etiqueta {
+  color: var(--app-muted);
+  font-size: 0.82rem;
+}
+
+.inicio-sesion-pagina--modal .inicio-sesion-brillo-fondo,
+.inicio-sesion-pagina--modal .inicio-sesion-fondo {
+  display: none;
+}
+
+.inicio-sesion-entrada-contenedor {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 8px; 
+  border: 1px solid var(--app-border);
+  background: var(--app-panel-2); 
+  padding: 0.62rem 0.72rem;
+  color: var(--app-accent);
+}
+
+.inicio-sesion-tarjeta--modal .inicio-sesion-entrada-contenedor {
+  border-radius: 8px;
+  padding: 0.82rem 0.9rem;
+}
+
+.inicio-sesion-entrada-contenedor:focus-within {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.25);
+}
+
+.inicio-sesion-entrada-contenedor input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--app-text);
+  outline: none;
+  font-size: 0.95rem;
+}
+
+.inicio-sesion-tarjeta--modal .inicio-sesion-entrada-contenedor input {
+  font-size: 1.02rem;
+}
+
+.inicio-sesion-entrada-contenedor input::placeholder {
+  color: color-mix(in srgb, var(--app-muted) 78%, transparent);
+}
+
+.inicio-sesion-error {
+  margin: 0;
+  border: 1px solid #dc2626;
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+  border-radius: 8px;
+  padding: 0.52rem 0.62rem;
+  font-size: 0.86rem;
+}
+
+.inicio-sesion-boton {
+  margin-top: 0.15rem;
+  border: 1px solid var(--app-accent);
+  background: var(--app-accent); 
+  color: #000;
+  font-weight: 700;
+  border-radius: 8px; 
+  padding: 0.72rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.inicio-sesion-tarjeta--modal .inicio-sesion-boton {
+  padding: 0.92rem;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.inicio-sesion-boton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.inicio-sesion-boton:not(:disabled):hover {
+  background: var(--app-accent);
+  opacity: 0.9;
+  transform: translateY(-2px);
+  filter: none; 
+}
+
+.inicio-sesion-boton:not(:disabled):active {
+  transform: translateY(0);
+}
+
+:root[data-theme='light'] .inicio-sesion-tarjeta {
+  background: linear-gradient(165deg, rgba(218, 227, 237, 0.96), rgba(203, 214, 225, 0.99));
+  box-shadow: 0 18px 32px rgba(51, 65, 85, 0.16);
+}
+
+:root[data-theme='light'] .inicio-sesion-entrada-contenedor {
+  background: rgba(255, 255, 255, 0.66);
+}
+
+/* --- BOTÓN DE CERRAR / VOLVER --- */
+.inicio-sesion-boton-cerrar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: var(--app-muted);
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  z-index: 10;
+}
+
+.inicio-sesion-boton-cerrar:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--app-text);
+}
+
+/* Si está en formato modal más grande, le damos un poco más de margen */
+.inicio-sesion-tarjeta--modal .inicio-sesion-boton-cerrar {
+  top: 1.5rem;
+  right: 1.5rem;
+}
+
+/* Modo claro (opcional si tu app usa light mode) */
+:root[data-theme='light'] .inicio-sesion-boton-cerrar:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 600px) {
+  .inicio-sesion-pagina--modal {
+    padding: 1rem;
+  }
+
+  .inicio-sesion-ruta-superposicion {
+    padding: 1rem;
+  }
+
+  .inicio-sesion-tarjeta {
+    padding: 1.05rem;
+    border-radius: 8px;
+  }
+  
+  .inicio-sesion-tarjeta,
+  .inicio-sesion-tarjeta--modal {
+    max-height: 92dvh;
+    overflow-y: auto;
+  }
+
+  .inicio-sesion-subtitulo {
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .inicio-sesion-boton-cerrar {
+    top: 0.7rem;
+    right: 0.7rem;
+  }
+
+  .inicio-sesion-marca {
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+  }
+
+  .inicio-sesion-tarjeta--modal {
+    width: min(100%, 560px);
+    padding: 1.35rem;
+    border-radius: 8px;
+  }
+
+  .inicio-sesion-titulo {
+    font-size: 1.8rem;
+  }
+
+  .inicio-sesion-tarjeta--modal .inicio-sesion-titulo {
+    font-size: 2rem;
+  }
+
+  .inicio-sesion-subtitulo {
+    font-size: 0.86rem;
+  }
+
+  .inicio-sesion-tarjeta--modal .inicio-sesion-subtitulo {
+    font-size: 0.9rem;
+  }
+}

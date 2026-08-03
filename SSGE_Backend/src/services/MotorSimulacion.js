@@ -1,3 +1,5 @@
+const { getReglasDifusas } = require('../config/reglasDifusasStore');
+
 // --- FUNCIONES AUXILIARES ---
 function limitar(valor, minimo, maximo) {
   return Math.max(minimo, Math.min(maximo, valor));
@@ -112,42 +114,52 @@ function obtenerFactorAgrarioHorario(fecha) {
   return 0.5; 
 }
 
-function calcularDesembalseSeguridadDifuso({ nivelPorcentaje, caudalEntradaPrevistoM3s }) {
-  const nBajo = gradoPertenencia(nivelPorcentaje, 0, 0, 40, 60);      
-  const nMedio = gradoPertenencia(nivelPorcentaje, 50, 70, 85, 90);    
-  const nAlto = gradoPertenencia(nivelPorcentaje, 85, 95, 98, 99);     
-  const nCritico = gradoPertenencia(nivelPorcentaje, 98, 99, 100, 100);
+function calcularSalidaRegla(caudalEntradaPrevistoM3s, salidaConfig) {
+  if (salidaConfig.modo === 'fijo') {
+    return salidaConfig.fijo;
+  }
 
-  const eEscasa = gradoPertenencia(caudalEntradaPrevistoM3s, 0, 0, 5, 15);
-  const eModerada = gradoPertenencia(caudalEntradaPrevistoM3s, 10, 20, 40, 60);
-  const eIntensa = gradoPertenencia(caudalEntradaPrevistoM3s, 40, 70, 120, 180);
-  const eTorrencial = gradoPertenencia(caudalEntradaPrevistoM3s, 150, 200, 1000, 1000);
+  return Math.max(salidaConfig.minimo, caudalEntradaPrevistoM3s * salidaConfig.factor);
+}
+
+function calcularDesembalseSeguridadDifuso({ nivelPorcentaje, caudalEntradaPrevistoM3s, reglasDifusas }) {
+  const cfg = reglasDifusas || getReglasDifusas();
+
+  const nBajo = gradoPertenencia(nivelPorcentaje, ...cfg.nivel.bajo);
+  const nMedio = gradoPertenencia(nivelPorcentaje, ...cfg.nivel.medio);
+  const nAlto = gradoPertenencia(nivelPorcentaje, ...cfg.nivel.alto);
+  const nCritico = gradoPertenencia(nivelPorcentaje, ...cfg.nivel.critico);
+
+  const eEscasa = gradoPertenencia(caudalEntradaPrevistoM3s, ...cfg.entrada.escasa);
+  const eModerada = gradoPertenencia(caudalEntradaPrevistoM3s, ...cfg.entrada.moderada);
+  const eIntensa = gradoPertenencia(caudalEntradaPrevistoM3s, ...cfg.entrada.intensa);
+  const eTorrencial = gradoPertenencia(caudalEntradaPrevistoM3s, ...cfg.entrada.torrencial);
   
   const w1 = nCritico;
-  const out1 = Math.max(30, caudalEntradaPrevistoM3s * 1.5);
+  const out1 = calcularSalidaRegla(caudalEntradaPrevistoM3s, cfg.salidas.regla1);
 
   const w2 = Math.min(nAlto, Math.max(eIntensa, eTorrencial));
-  const out2 = Math.max(25, caudalEntradaPrevistoM3s * 1.25);
+  const out2 = calcularSalidaRegla(caudalEntradaPrevistoM3s, cfg.salidas.regla2);
 
   const w3 = Math.min(nAlto, Math.max(eEscasa, eModerada));
-  const out3 = 15;
+  const out3 = calcularSalidaRegla(caudalEntradaPrevistoM3s, cfg.salidas.regla3);
 
   const w4 = Math.min(nMedio, Math.max(eIntensa, eTorrencial));
-  const out4 = Math.max(10, caudalEntradaPrevistoM3s * 0.6);
+  const out4 = calcularSalidaRegla(caudalEntradaPrevistoM3s, cfg.salidas.regla4);
 
   const w5 = Math.min(nMedio, eModerada);
-  const out5 = Math.max(2, caudalEntradaPrevistoM3s * 0.8);
+  const out5 = calcularSalidaRegla(caudalEntradaPrevistoM3s, cfg.salidas.regla5);
 
   const w6 = Math.min(nMedio, eEscasa);
-  const out6 = Math.max(0.5, caudalEntradaPrevistoM3s * 0.5);
+  const out6 = calcularSalidaRegla(caudalEntradaPrevistoM3s, cfg.salidas.regla6);
 
   const w7 = nBajo;
-  const out7 = Math.max(0.3, caudalEntradaPrevistoM3s * 0.1);
+  const out7 = calcularSalidaRegla(caudalEntradaPrevistoM3s, cfg.salidas.regla7);
 
   const numerador = (w1 * out1) + (w2 * out2) + (w3 * out3) + (w4 * out4) + (w5 * out5) + (w6 * out6) + (w7 * out7);
   const denominador = w1 + w2 + w3 + w4 + w5 + w6 + w7;
 
-  if (denominador === 0) return 0.3; 
+  if (denominador === 0) return cfg.fallbackM3s;
   return Number((numerador / denominador).toFixed(2));
 }
 
@@ -219,6 +231,7 @@ function simularEscenarioManual({ embalse, estadoInicial, escenario }) {
   const evaporacionArray = (embalse.evaporacionMensual && Array.isArray(embalse.evaporacionMensual)) ? embalse.evaporacionMensual : [38.9, 45.8, 92.0, 105.2, 125.9, 166.6, 235.2, 232.7, 161.9, 81.2, 58.6, 48.7];
   const umbralesSequiaArray = (embalse.umbralesSequiaAgraria && Array.isArray(embalse.umbralesSequiaAgraria)) ? embalse.umbralesSequiaAgraria : [15, 43, 65];
   const curvaGeometrica = (embalse.curvaSuperficie && Array.isArray(embalse.curvaSuperficie)) ? embalse.curvaSuperficie : [{ vol: 0, sup: 1 }, { vol: 14.1, sup: 31 }, { vol: 70.7, sup: 156 }];
+  const reglasDifusas = getReglasDifusas();
     
   const proyeccionCompleta = [];
   const añoActual = new Date().getFullYear();
@@ -233,12 +246,6 @@ function simularEscenarioManual({ embalse, estadoInicial, escenario }) {
 
     const caudalEcologicoM3s = obtenerCaudalEcologicoM3s(caudalEcologicoArray, volumenActualHm3, mesActualIndex);
     const demandaEcologicaPasoHm3 = caudalM3sAHm3PorPaso(caudalEcologicoM3s, pasoMin);
-    
-    if (mesActualIndex >= 2 && mesActualIndex <= 5) { 
-      factorAgrarioRealidad = 0.05; 
-    } else if (mesActualIndex >= 6 && mesActualIndex <= 8) {
-      factorAgrarioRealidad = 0.40; 
-    }
 
     const multiplicadorAgrarioDifuso = obtenerMultiplicadorAgrarioDifuso(volumenActualHm3, umbralesSequiaArray);
     const multiplicadorLluvia = obtenerMultiplicadorLluvia(caudalEntradaPrevistoM3s);
@@ -251,6 +258,7 @@ function simularEscenarioManual({ embalse, estadoInicial, escenario }) {
     const desembalseSeguridadM3s = calcularDesembalseSeguridadDifuso({
       nivelPorcentaje: nivelPorcentajeAntes,
       caudalEntradaPrevistoM3s,
+      reglasDifusas,
     });
 
     const evaporacionM3s = obtenerEvaporacionM3s(evaporacionArray, curvaGeometrica, volumenActualHm3, mesActualIndex);
@@ -345,6 +353,7 @@ function simularEscenarioHistorico({ embalse, estadoInicial, serieHistorica, esc
   const evaporacionArray = (embalse.evaporacionMensual && Array.isArray(embalse.evaporacionMensual)) ? embalse.evaporacionMensual : [38.9, 45.8, 92.0, 105.2, 125.9, 166.6, 235.2, 232.7, 161.9, 81.2, 58.6, 48.7];
   const umbralesSequiaArray = (embalse.umbralesSequiaAgraria && Array.isArray(embalse.umbralesSequiaAgraria)) ? embalse.umbralesSequiaAgraria : [15, 43, 65];
   const curvaGeometrica = (embalse.curvaSuperficie && Array.isArray(embalse.curvaSuperficie)) ? embalse.curvaSuperficie : [{ vol: 0, sup: 1 }, { vol: 14.1, sup: 31 }, { vol: 70.7, sup: 156 }];
+  const reglasDifusas = getReglasDifusas();
 
   const proyeccionCompleta = [];
 
@@ -371,6 +380,7 @@ function simularEscenarioHistorico({ embalse, estadoInicial, serieHistorica, esc
     const desembalseSeguridadM3s = calcularDesembalseSeguridadDifuso({
       nivelPorcentaje: nivelPorcentajeAntes,
       caudalEntradaPrevistoM3s: caudalEntradaM3s, 
+      reglasDifusas,
     });
 
     const evaporacionM3s = obtenerEvaporacionM3s(evaporacionArray, curvaGeometrica, volumenActualHm3, mesActualIndex);

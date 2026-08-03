@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "concurrently \"cd ./SSGE_Backend && node server.js\" \"cd ./SSGE_Scraper && node produccion.js\" \"cd ./SSGE-Frontend && npm run dev\""
+    "dev": "concurrently \"cd ./SSGE_Backend && node --trace-deprecation server.js\" \"cd ./SSGE_Scraper && node produccion.js\" \"cd ./SSGE-Frontend && npm run dev\""
   },
   "devDependencies": {
     "@mermaid-js/mermaid-cli": "^11.16.0",

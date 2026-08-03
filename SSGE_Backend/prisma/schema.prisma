@@ -133,6 +133,7 @@ model MedicionHistorica {
   embalseSenalId Int?
   embalseSenal   EmbalseSenal? @relation(fields: [embalseSenalId], references: [id], onDelete: SetNull)
 
+  @@unique([embalseId, timestamp])
   @@index([timestamp])
   @@index([embalseSenalId])
 }
