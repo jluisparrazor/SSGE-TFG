@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { inject } from '@vercel/analytics';
 import "./styles/index.css";
 import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import AniadirEmbalse from './pages/AniadirEmbalse/AniadirEmbalse.jsx';
@@ -10,6 +11,8 @@ import InicioSesion from './pages/Login/Login.jsx';
 import GestionUsuarios from './pages/GestionUsuarios/GestionUsuarios.jsx';
 import AuditoriaGlobal from './pages/Auditoria/AuditoriaGlobal.jsx';
 import { getToken, isRoleAllowed } from './lib/api.js';
+
+inject();
 
 function RequireAuth({ children, allowedRoles = [] }) {
   const token = getToken();
