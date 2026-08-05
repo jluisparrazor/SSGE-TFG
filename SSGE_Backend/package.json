@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "start": "node server.js",
     "test": "npx dotenv-cli -e .env.test -- node --test-concurrency=1 --test tests/**/*.test.js",
