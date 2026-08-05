@@ -18,6 +18,7 @@ for (const rutaEnv of rutasEnv) {
 }
 
 const INGESTA_API_KEY = process.env.INGESTA_API_KEY || '';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 
 if (!INGESTA_API_KEY) {
     console.error('[Producción] INGESTA_API_KEY no definida. Crea SSGE_Scraper/.env o usa SSGE_Backend/.env con esta clave.');
@@ -25,7 +26,7 @@ if (!INGESTA_API_KEY) {
 }
 
 // Conexión al Nodo Central
-const socket = io('http://localhost:3000', {
+const socket = io(BACKEND_URL, {
     auth: {
         apiKey: INGESTA_API_KEY,
     },
@@ -82,7 +83,7 @@ const inferirEstacionPorSenales = (embalse) => {
 
 const obtenerConfiguracionesEmbalses = async () => {
     try {
-        const res = await fetch('http://localhost:3000/api/ingesta/embalses-config', {
+        const res = await fetch(`${BACKEND_URL}/api/ingesta/embalses-config`, {
             headers: {
                 'x-api-key': INGESTA_API_KEY,
             },

@@ -5,9 +5,6 @@ const { requireAuth, requireRole } = require('../middlewares/auth.middleware');
 
 const authAdminOperador = [requireAuth, requireRole('ADMIN', 'OPERADOR')];
 
-router.get('/simulacion/reglas-difusas', authAdminOperador, simulacionController.obtenerReglasDifusas);
-router.put('/simulacion/reglas-difusas', authAdminOperador, simulacionController.actualizarReglasDifusas);
-
 router.post('/simulacion/ejecutar', authAdminOperador, simulacionController.ejecutarSimulacion);
 
 router.get('/simulaciones', simulacionController.obtenerSimulaciones);

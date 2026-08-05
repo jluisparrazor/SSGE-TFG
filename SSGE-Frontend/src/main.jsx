@@ -6,7 +6,6 @@ import Dashboard from './pages/Dashboard/Dashboard.jsx'
 import AniadirEmbalse from './pages/AniadirEmbalse/AniadirEmbalse.jsx';
 import Simulacion from './pages/Simulacion/Simulacion.jsx';
 import ConfiguracionEmbalse from './pages/ConfiguracionEmbalse/ConfiguracionEmbalse.jsx';
-import ReglasDifusas from './pages/ReglasDifusas/ReglasDifusas.jsx';
 import InicioSesion from './pages/Login/Login.jsx';
 import GestionUsuarios from './pages/GestionUsuarios/GestionUsuarios.jsx';
 import AuditoriaGlobal from './pages/Auditoria/AuditoriaGlobal.jsx';
@@ -80,14 +79,6 @@ createRoot(document.getElementById('root')).render(
           element={(
             <RequireAuth allowedRoles={['ADMIN', 'OPERADOR']}>
               <ConfiguracionEmbalse />
-            </RequireAuth>
-          )}
-        />
-        <Route
-          path="/reglas-difusas"
-          element={(
-            <RequireAuth allowedRoles={['ADMIN', 'OPERADOR']}>
-              <ReglasDifusas />
             </RequireAuth>
           )}
         />

@@ -238,14 +238,6 @@ function ConfiguracionEmbalse() {
                     >
                       {embalse.activo ? 'Desactivar' : 'Activar'}
                     </button>
-
-                    <button
-                      type="button"
-                      className="btn-guardar config-embalse-rules-btn"
-                      onClick={() => navigate('/reglas-difusas')}
-                    >
-                      Reglas Globales
-                    </button>
                     <button
                         type="button"
                         className="btn-guardar config-embalse-edit-btn"

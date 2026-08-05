@@ -4,9 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "test": "npx dotenv-cli -e .env.test -- node --test-concurrency=1 --test tests/**/*.test.js",
+    "test:coverage": "npx dotenv-cli -e .env.test -- c8 --reporter=text --reporter=html node --test-concurrency=1 --test tests/**/*.test.js",
     "auditoria:limpiar": "node scripts/limpiar_auditoria.js",
-    "mediciones:limpiar": "node scripts/limpiar_medicion.js"
+    "mediciones:limpiar": "node scripts/limpiar_medicion.js",
+    "db:backup": "node backup.js",
+    "db:restore": "psql $DATABASE_URL -f"
   },
   "keywords": [],
   "author": "",
@@ -24,7 +28,10 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "c8": "^12.0.0",
     "dotenv": "^17.4.1",
-    "prisma": "7.9.1"
+    "dotenv-cli": "^11.0.0",
+    "prisma": "7.9.1",
+    "supertest": "^7.2.2"
   }
 }

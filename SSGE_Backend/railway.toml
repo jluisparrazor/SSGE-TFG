@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npx prisma migrate deploy && node server.js"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

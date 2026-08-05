@@ -1,8 +1,9 @@
 const { io } = require('socket.io-client');
 const { obtenerDatosEstacion } = require('./saih_sdk.js');
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 // 1. Conexión al Nodo Central
-const socket = io('http://localhost:3000');
+const socket = io(BACKEND_URL);
 
 socket.on('connect', async () => {
     console.log(`[Simulador] Conectado al Nodo Central. ID: ${socket.id}`);

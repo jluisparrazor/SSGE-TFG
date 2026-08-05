@@ -54,13 +54,6 @@ class TelegramService {
             this.bot.sendMessage(chatId, ayudaTexto, { parse_mode: 'Markdown' });
         });
 
-        this.bot.onText(/\/anabe/, (msg) => {
-            const chatId = msg.chat.id;
-            const ayudaTexto = `🐄​*Anabeeee me guztaaaaz*🐧​\n\n`;
-            
-            this.bot.sendMessage(chatId, ayudaTexto, { parse_mode: 'Markdown' });
-        });
-
         // --- 2. COMANDO /embalses ---
         this.bot.onText(/\/embalses/, async (msg) => {
             const chatId = msg.chat.id;
@@ -275,7 +268,7 @@ class TelegramService {
             }
         });
 
-        console.log('🤖 Servicio de Telegram iniciado. Escuchando comandos...');
+        console.log('Servicio de Telegram iniciado. Escuchando comandos...');
     }
 }
 

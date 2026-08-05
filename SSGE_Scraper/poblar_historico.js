@@ -1,7 +1,8 @@
 const { io } = require('socket.io-client');
 const { obtenerDatosEstacion } = require('./saih_sdk.js');
 
-const socket = io('http://localhost:3000');
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+const socket = io(BACKEND_URL);
 
 const formatearFecha = (fecha) => {
     return `${fecha.getDate().toString().padStart(2, '0')}/${(fecha.getMonth() + 1).toString().padStart(2, '0')}/${fecha.getFullYear()}`;

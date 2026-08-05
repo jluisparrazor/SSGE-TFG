@@ -38,7 +38,7 @@ async function main() {
 
   // 1. Limpiamos la base de datos por si ejecutamos el seed varias veces
   // (Al borrar el embalse, el onDelete: Cascade borrará también sus sensores y compuertas)
-/*   await prisma.embalse.deleteMany(); */
+  await prisma.embalse.deleteMany(); 
   console.log('Base de datos limpiada.');
 
   //Hash de contraseñas para los usuarios
@@ -60,14 +60,25 @@ async function main() {
 
   console.log('Usuarios creados.');
 
-  // 2. Creamos el Embalse de Canales (Granada) con sus sensores y compuertas de golpe
- /*  const embalseCanales = await prisma.embalse.create({
+  // 2. Creamos el Embalse de Canales con toda su configuración recuperada
+  const embalseCanales = await prisma.embalse.create({
     data: {
-      nombre: 'Embalse de Canales',
-      capacidadHm3: 70.8,    // Capacidad real aproximada
-      cotaMaximaM: 954.0,    // Altura máxima sobre el nivel del mar
-      cotaMinimaM: 900.0,    // Altura mínima de referencia
-
+      nombre: 'Canales',
+      capacidadHm3: 70.7, 
+      cotaMaximaM: 954.0, 
+      cotaMinimaM: 900.0, 
+      demandaUrbanaMensual: 4.72,
+      demandaAgrariaMensual: [2.1, 2.1, 4.5, 8.2, 17.21, 14.0, 13.5, 15.9, 9.0, 5.0, 2.8, 2.1],
+      caudalEcologicoMensual: [0.145, 0.145, 0.145, 0.145, 0.110, 0.110, 0.110, 0.110, 0.110, 0.115, 0.115, 0.145],
+      evaporacionMensual: [38.9, 45.8, 92.0, 105.2, 125.9, 166.6, 235.2, 232.7, 161.9, 81.2, 58.6, 48.7],
+      umbralesSequiaAgraria: [15, 43, 65],
+      curvaSuperficie: [
+          {"vol": 0, "sup": 1}, 
+          {"vol": 14.1, "sup": 31}, 
+          {"vol": 70.7, "sup": 156}
+      ],
+      activo: true,
+      
       // MAGIA DE PRISMA: Creamos las relaciones anidadas directamente
       sensores: {
         create: [
@@ -78,14 +89,14 @@ async function main() {
       },
       compuertas: {
         create: [
-          { nombre: 'Aliviadero de Superficie', estadoAperturaPorcentaje: 0.0, caudalSalidaActual: 0.0 },
-          { nombre: 'Desagüe de Fondo', estadoAperturaPorcentaje: 10.0, caudalSalidaActual: 5.2 }
+          { identificador: 'Aliviadero de Superficie', capacidad: 0.0 },
+          { identificador: 'Desagüe de Fondo', capacidad: 10.0 }
         ]
       }
     }
   });
 
-  console.log('Embalse creado con éxito:', embalseCanales.nombre); */
+  console.log('Embalse creado con éxito:', embalseCanales.nombre);
 }
 
 main()

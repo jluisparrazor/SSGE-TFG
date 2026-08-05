@@ -4,7 +4,7 @@ const { obtenerDatosEstacion } = require('./saih_sdk.js');
 const http = require('http');
 const https = require('https');
 
-const BACKEND_URL = 'http://localhost:3000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const INGESTA_API_KEY = process.env.INGESTA_API_KEY || '';
 
 const socket = io(BACKEND_URL, {

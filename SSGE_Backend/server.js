@@ -118,7 +118,6 @@ async function shutdown(signal) {
         server.close(async () => {
             try {
                 await prisma.$disconnect();
-                // if (pool) await pool.end();
                 clearTimeout(forceExit);
                 console.log('Recursos cerrados correctamente');
                 process.exit(0);

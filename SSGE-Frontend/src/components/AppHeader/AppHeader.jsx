@@ -140,9 +140,6 @@ function AppHeader() {
               {puedeGestionarEmbalses && (
                 <Link to="/configuracion-embalse" className="main-dropdown-item" onClick={() => setMenuPrincipalAbierto(false)}>Configuración Embalse</Link>
               )}
-              {puedeGestionarEmbalses && (
-                <Link to="/reglas-difusas" className="main-dropdown-item" onClick={() => setMenuPrincipalAbierto(false)}>Reglas Difusas</Link>
-              )}
               {esAdmin && (
                 <Link to="/gestion-usuarios" className="main-dropdown-item" onClick={() => setMenuPrincipalAbierto(false)}>Gestión Usuarios</Link>
               )}

@@ -1,25 +1,5 @@
 const { prisma } = require('../lib/prisma');
 const { simularEscenarioManual, simularEscenarioHistorico } = require('../services/MotorSimulacion');
-const { getReglasDifusas, setReglasDifusas } = require('../config/reglasDifusasStore');
-
-const obtenerReglasDifusas = async (_req, res) => {
-  try {
-    const reglas = getReglasDifusas();
-    return res.json(reglas);
-  } catch (error) {
-    console.error('Error al obtener reglas difusas:', error.message);
-    return res.status(500).json({ error: 'No se pudo cargar la configuracion de reglas difusas.' });
-  }
-};
-
-const actualizarReglasDifusas = async (req, res) => {
-  try {
-    const reglasActualizadas = setReglasDifusas(req.body || {});
-    return res.json(reglasActualizadas);
-  } catch (error) {
-    return res.status(400).json({ error: error.message || 'No se pudo actualizar la configuracion de reglas difusas.' });
-  }
-};
 
 const ejecutarSimulacion = async (req, res) => {
   try {
@@ -279,8 +259,6 @@ const obtenerHistorial = async (req, res) => {
 };
 
 module.exports = {
-  obtenerReglasDifusas,
-  actualizarReglasDifusas,
   ejecutarSimulacion,
   exportarSimulacion,
   obtenerSimulaciones,
