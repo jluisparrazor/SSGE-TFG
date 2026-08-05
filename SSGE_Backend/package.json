@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node server.js",
+    "postinstall": "prisma generate --generator client",
     "test": "npx dotenv-cli -e .env.test -- node --test-concurrency=1 --test tests/**/*.test.js",
     "test:coverage": "npx dotenv-cli -e .env.test -- c8 --reporter=text --reporter=html node --test-concurrency=1 --test tests/**/*.test.js",
     "auditoria:limpiar": "node scripts/limpiar_auditoria.js",

@@ -2,6 +2,6 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "npx prisma generate && npx prisma migrate deploy && node server.js"
+startCommand = "npx prisma generate --generator client && npx prisma migrate deploy && node server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
