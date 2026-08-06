@@ -1,24 +1,61 @@
 const MedicionRepository = require('../repositories/medicion.repository');
 
+const TZ_SAIH = 'Europe/Madrid';
+
+const obtenerOffsetMinutos = (zonaHoraria, instanteMs) => {
+    const partes = new Intl.DateTimeFormat('en-GB', {
+        timeZone: zonaHoraria,
+        timeZoneName: 'shortOffset',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).formatToParts(new Date(instanteMs));
+
+    const tz = partes.find((p) => p.type === 'timeZoneName')?.value || 'GMT+0';
+    const match = tz.match(/GMT([+-]\d{1,2})(?::?(\d{2}))?/i);
+    if (!match) return 0;
+
+    const horas = Number(match[1]);
+    const minutos = Number(match[2] || 0);
+    const signo = horas >= 0 ? 1 : -1;
+    return (Math.abs(horas) * 60 + minutos) * signo;
+};
+
+const construirFechaDesdeMadrid = (anio, mes, dia, hora, minuto) => {
+    const utcTentativa = Date.UTC(anio, mes - 1, dia, hora, minuto, 0, 0);
+    const offsetMin = obtenerOffsetMinutos(TZ_SAIH, utcTentativa);
+    return new Date(utcTentativa - offsetMin * 60 * 1000);
+};
+
 // --- FUNCIONES DE PARSEO Y LIMPIEZA ---
 const parsearFecha = (fechaStr) => {
     if (!fechaStr) return new Date();
     try {
-        // 1. Cambiamos posibles guiones por espacios para homogeneizar
-        const limpia = fechaStr.trim().replace('-', ' ');
-        // 2. Separamos fecha y hora (asignamos '00:00' por defecto si no hay hora)
-        const [fecha, hora = '00:00'] = limpia.split(' ');
-        const [dia, mes, anio] = fecha.split('/');
-        
-        // 3. Si el año viene como '26', lo pasamos a '2026'. Si ya es '2026', lo dejamos igual
-        const anioFinal = (anio && anio.length === 2) ? `20${anio}` : anio;
-        
-        const fechaObj = new Date(`${anioFinal}-${mes}-${dia}T${hora}:00`);
-        
-        // 4. Comprobación vital: si JS genera un "Invalid Date", devolvemos la fecha actual
-        if (isNaN(fechaObj.getTime())) return new Date();
-        
-        return fechaObj;
+        const valor = String(fechaStr).trim();
+
+        // ISO (por ejemplo, Prisma/REST): se respeta tal cual
+        if (valor.includes('T')) {
+            const fechaIso = new Date(valor);
+            return Number.isNaN(fechaIso.getTime()) ? new Date() : fechaIso;
+        }
+
+        // SAIH: dd/mm/yy-hh:mm o dd/mm/yyyy hh:mm
+        const match = valor.match(/^(\d{2})\/(\d{2})\/(\d{2}|\d{4})[-\s](\d{2}):(\d{2})$/);
+        if (match) {
+            const [, dd, mm, yyOrYyyy, hh, min] = match;
+            const anio = yyOrYyyy.length === 2 ? Number(`20${yyOrYyyy}`) : Number(yyOrYyyy);
+            const fechaMadrid = construirFechaDesdeMadrid(
+                anio,
+                Number(mm),
+                Number(dd),
+                Number(hh),
+                Number(min)
+            );
+            return Number.isNaN(fechaMadrid.getTime()) ? new Date() : fechaMadrid;
+        }
+
+        // Fallback genérico
+        const fechaObj = new Date(valor);
+        return Number.isNaN(fechaObj.getTime()) ? new Date() : fechaObj;
     } catch (e) {
         return new Date();
     }
@@ -40,6 +77,38 @@ const extraerCaudal = (payload, claves, valorRespaldado) => {
         }
     }
     return valorRespaldado;
+};
+
+const construirEstadoBase = (ultimos) => ({
+    nivel: ultimos.estadoPrevio.nivel,
+    volumen: ultimos.estadoPrevio.volumen,
+    precipitacion: ultimos.estadoPrevio.precipitacion,
+    temperatura: ultimos.estadoPrevio.temperatura,
+    caudalEntrada: ultimos.respaldoEntrada,
+    caudalSalida: ultimos.respaldoSalida,
+});
+
+const construirRegistroHistorico = (payload, estadoAnterior, embalseId) => {
+    const siguienteEstado = {
+        nivel: extraerSeguro(payload, 'NIVEL EMBALSE (m.s.n.m)', estadoAnterior.nivel),
+        volumen: extraerSeguro(payload, 'VOLUMEN EMBALSADO (hm³)', estadoAnterior.volumen),
+        precipitacion: extraerSeguro(payload, 'PRECIPITACION (l/m²)', estadoAnterior.precipitacion),
+        temperatura: extraerSeguro(payload, 'TEMPERATURA (ºC)', estadoAnterior.temperatura),
+        caudalEntrada: extraerCaudal(payload, 'APORTACION AL EMBALSE (m³/s)', estadoAnterior.caudalEntrada),
+        caudalSalida: extraerCaudal(payload, [
+            'CAUDAL DESEMBALSADO (m³/s)',
+            'CAUDAL DESEMBALSADO AL RIO (m³/s)'
+        ], estadoAnterior.caudalSalida),
+    };
+
+    return {
+        registro: {
+            embalseId,
+            timestamp: parsearFecha(payload.timestamp),
+            ...siguienteEstado,
+        },
+        siguienteEstado,
+    };
 };
 
 // --- LÓGICA DE NEGOCIO PRINCIPAL ---
@@ -73,6 +142,36 @@ const procesarYGuardarPayload = async (payload) => {
     };
 
     return MedicionRepository.upsert(embalseId, fechaParseada, dataObj);
+};
+
+const procesarYGuardarLote = async ({ embalseId, registros }) => {
+    let embalseIdFinal = Number(embalseId);
+
+    if (!Number.isFinite(embalseIdFinal)) {
+        embalseIdFinal = await MedicionRepository.obtenerPrimerEmbalseId();
+        if (!embalseIdFinal) throw new Error('No hay embalses creados en la base de datos');
+    } else {
+        const existe = await MedicionRepository.verificarEmbalseExiste(embalseIdFinal);
+        if (!existe) {
+            embalseIdFinal = await MedicionRepository.obtenerPrimerEmbalseId();
+            if (!embalseIdFinal) throw new Error('No hay embalses creados en la base de datos');
+        }
+    }
+
+    if (!Array.isArray(registros) || registros.length === 0) {
+        return 0;
+    }
+
+    const ultimos = await MedicionRepository.obtenerUltimosDatos(embalseIdFinal);
+    let estadoActual = construirEstadoBase(ultimos);
+
+    const registrosNormalizados = registros.map((payload) => {
+        const { registro, siguienteEstado } = construirRegistroHistorico(payload, estadoActual, embalseIdFinal);
+        estadoActual = siguienteEstado;
+        return registro;
+    });
+
+    return MedicionRepository.insertarLote(registrosNormalizados);
 };
 
 // --- RUTAS HTTP ---
@@ -109,4 +208,4 @@ const guardar = async (req, res) => {
     }
 };
 
-module.exports = { procesarYGuardarPayload, obtenerPorRango, guardar };
+module.exports = { procesarYGuardarPayload, procesarYGuardarLote, obtenerPorRango, guardar };
