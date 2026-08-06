@@ -89,8 +89,8 @@ async function main() {
       },
       compuertas: {
         create: [
-          { identificador: 'Aliviadero de Superficie', capacidad: 0.0 },
-          { identificador: 'Desagüe de Fondo', capacidad: 10.0 }
+          { nombre: 'Aliviadero de Superficie', cotaTomaM: null, estadoAperturaPorcentaje: 0.0, caudalSalidaActual: 0.0 },
+          { nombre: 'Desagüe de Fondo', cotaTomaM: null, estadoAperturaPorcentaje: 0.0, caudalSalidaActual: 10.0 }
         ]
       }
     }

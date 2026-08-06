@@ -4,6 +4,7 @@ const { io } = require('socket.io-client');
 const { obtenerDatosEstacion } = require('./saih_sdk.js');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
 
 const rutasEnv = [
     path.join(__dirname, '.env'),
@@ -19,11 +20,48 @@ for (const rutaEnv of rutasEnv) {
 
 const INGESTA_API_KEY = process.env.INGESTA_API_KEY || '';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || INGESTA_API_KEY;
+const PORT = Number(process.env.PORT) || 3001;
 
 if (!INGESTA_API_KEY) {
     console.error('[Producción] INGESTA_API_KEY no definida. Crea SSGE_Scraper/.env o usa SSGE_Backend/.env con esta clave.');
     process.exit(1);
 }
+
+if (!SCRAPER_API_KEY) {
+    console.error('[Producción] SCRAPER_API_KEY no definida. Se requiere para la API /historico.');
+    process.exit(1);
+}
+
+const app = express();
+app.use(express.json());
+
+app.get('/health', (_req, res) => {
+    res.json({ ok: true, servicio: 'ssge-scraper' });
+});
+
+app.post('/historico', async (req, res) => {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey || apiKey !== SCRAPER_API_KEY) {
+        return res.status(401).json({ error: 'API key invalida' });
+    }
+
+    const estacionCodigo = typeof req.body?.estacionCodigo === 'string' ? req.body.estacionCodigo.trim() : '';
+    const desde = typeof req.body?.desde === 'string' ? req.body.desde.trim() : '';
+    const hasta = typeof req.body?.hasta === 'string' ? req.body.hasta.trim() : '';
+
+    if (!estacionCodigo || !desde || !hasta) {
+        return res.status(400).json({ error: 'Faltan parámetros obligatorios: estacionCodigo, desde, hasta' });
+    }
+
+    try {
+        const datos = await obtenerDatosEstacion(estacionCodigo, desde, hasta);
+        return res.json({ ok: true, datos: Array.isArray(datos) ? datos : [] });
+    } catch (error) {
+        console.error('[API /historico] Error:', error.message || error);
+        return res.status(500).json({ error: 'Error consultando datos historicos en CHG' });
+    }
+});
 
 // Conexión al Nodo Central
 const socket = io(BACKEND_URL, {
@@ -242,4 +280,8 @@ socket.on('connect_error', (err) => {
 socket.on('ingesta:refresh-config', async (evento) => {
     console.log('[Producción] Evento de refresco recibido:', evento?.tipo || 'sin_tipo');
     await ejecutarLectura();
+});
+
+app.listen(PORT, () => {
+    console.log(`[Producción] API HTTP activa en puerto ${PORT}`);
 });

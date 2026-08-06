@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^17.4.2",
+    "express": "^5.2.1",
     "node-cron": "^4.2.1",
     "playwright": "^1.58.2",
     "socket.io-client": "^4.8.3"

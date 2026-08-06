@@ -6,6 +6,8 @@ const MedicionController = require('../controllers/medicion.controller');
 
 const SCRAPER_DIR = process.env.SCRAPER_DIR || '';
 const SCRAPER_DIR_FALLBACK = path.resolve(__dirname, '../../../SSGE_Scraper');
+const SCRAPER_URL = (process.env.SCRAPER_URL || '').trim();
+const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || process.env.INGESTA_API_KEY || '';
 
 const TAREAS_INGESTA = {
 	produccion: 'produccion.js',
@@ -13,6 +15,45 @@ const TAREAS_INGESTA = {
 };
 
 const tareasEnEjecucion = new Set();
+
+async function obtenerDatosHistoricosDesdeScraperRemoto({ estacionCodigo, desde, hasta }) {
+	if (!SCRAPER_URL) return null;
+
+	const endpoint = new URL('/historico', SCRAPER_URL).toString();
+	const respuesta = await fetch(endpoint, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'x-api-key': SCRAPER_API_KEY,
+		},
+		body: JSON.stringify({ estacionCodigo, desde, hasta }),
+	});
+
+	if (!respuesta.ok) {
+		const detalle = await respuesta.text().catch(() => '');
+		throw new Error(`Scraper remoto respondió ${respuesta.status}${detalle ? `: ${detalle}` : ''}`);
+	}
+
+	const payload = await respuesta.json();
+	if (!Array.isArray(payload?.datos)) {
+		throw new Error('Respuesta del scraper remoto inválida. Se esperaba { datos: [] }.');
+	}
+
+	return payload.datos;
+}
+
+async function obtenerDatosHistoricosDesdeScraperLocal({ estacionCodigo, desde, hasta }) {
+	const scraperDir = obtenerDirectorioScraper();
+	const { obtenerDatosEstacion } = require(path.join(scraperDir, 'saih_sdk.js'));
+	return obtenerDatosEstacion(estacionCodigo, desde, hasta);
+}
+
+async function obtenerDatosHistoricosSAIH({ estacionCodigo, desde, hasta }) {
+	const datosRemotos = await obtenerDatosHistoricosDesdeScraperRemoto({ estacionCodigo, desde, hasta });
+	if (datosRemotos) return datosRemotos;
+
+	return obtenerDatosHistoricosDesdeScraperLocal({ estacionCodigo, desde, hasta });
+}
 
 function obtenerDirectorioScraper() {
 	const candidatos = [SCRAPER_DIR, SCRAPER_DIR_FALLBACK].filter(Boolean);
@@ -90,10 +131,11 @@ const cargarRangoHistorico = async (req, res) => {
       return `${dd}/${mm}/${yyyy}`;
     };
 
-    const scraperDir = obtenerDirectorioScraper();
-    const { obtenerDatosEstacion } = require(path.join(scraperDir, 'saih_sdk.js'));
-
-    const datosNuevos = await obtenerDatosEstacion(estacionCodigo, formatFechaSAIH(desde), formatFechaSAIH(hasta));
+		const datosNuevos = await obtenerDatosHistoricosSAIH({
+			estacionCodigo,
+			desde: formatFechaSAIH(desde),
+			hasta: formatFechaSAIH(hasta),
+		});
 
     if (!datosNuevos || datosNuevos.length === 0) {
       return res.json({ ok: true, mensaje: 'La CHG no devolvió datos para este rango.', registrosNuevos: 0 });
