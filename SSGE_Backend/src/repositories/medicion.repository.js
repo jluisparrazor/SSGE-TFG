@@ -46,6 +46,24 @@ class MedicionRepository {
             create: { ...dataObj, embalseId, timestamp }
         });
     }
+
+    static async insertarLote(registros, chunkSize = 500) {
+        if (!Array.isArray(registros) || registros.length === 0) {
+            return 0;
+        }
+
+        let totalInsertados = 0;
+        for (let indice = 0; indice < registros.length; indice += chunkSize) {
+            const lote = registros.slice(indice, indice + chunkSize);
+            const resultado = await prisma.medicionHistorica.createMany({
+                data: lote,
+                skipDuplicates: true,
+            });
+            totalInsertados += resultado.count;
+        }
+
+        return totalInsertados;
+    }
     
 }
 

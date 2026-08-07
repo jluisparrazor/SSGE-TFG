@@ -124,7 +124,7 @@ const cargarRangoHistorico = async (req, res) => {
     }
 
     const embalse = await prisma.embalse.findUnique({ where: { id: Number(embalseId) } });
-    if (!embalse) return res.status(404).json({ error: 'Embalse no encontrado' });
+		if (!embalse) return res.status(404).json({ error: 'Embalse no encontrado' });
 
     const formatFechaSAIH = (fechaStr) => {
       const [yyyy, mm, dd] = fechaStr.split('-');
@@ -143,20 +143,17 @@ const cargarRangoHistorico = async (req, res) => {
 
     const datosValidos = datosNuevos.filter(fila => fila['NIVEL EMBALSE (m.s.n.m)'] && fila['NIVEL EMBALSE (m.s.n.m)'].trim() !== '' && fila['Fecha y Hora'] && fila['Fecha y Hora'].trim() !== '');
 
-    let registrosGuardados = 0;
-    for (const fila of datosValidos) {
-      try {
-        await MedicionController.procesarYGuardarPayload({
-          origen: 'SAIH_CHG_HISTORICO_ONDEMAND', embalse: embalse.nombre,
-          embalseId: embalse.id, timestamp: fila['Fecha y Hora'].trim(), mediciones: fila,
-        });
-        registrosGuardados++;
-      } catch (err) {
-        console.warn(`Aviso al guardar histórico:`, err.message);
-      }
-    }
-
-    return res.json({ ok: true, mensaje: `Datos extraídos del SAIH correctamente.`, registrosNuevos: registrosGuardados });
+		const registrosGuardados = await MedicionController.procesarYGuardarLote({
+			embalseId: embalse.id,
+			registros: datosValidos.map((fila) => ({
+				origen: 'SAIH_CHG_HISTORICO_ONDEMAND',
+				embalse: embalse.nombre,
+				embalseId: embalse.id,
+				timestamp: fila['Fecha y Hora'].trim(),
+				mediciones: fila,
+			})),
+		});
+		return res.json({ ok: true, mensaje: `Datos extraídos del SAIH correctamente.`, registrosNuevos: registrosGuardados });
   } catch (error) {
     console.error('Error cargando datos del SAIH bajo demanda:', error);
     return res.status(500).json({ error: 'Error al comunicarse con el scraper o la BD' });

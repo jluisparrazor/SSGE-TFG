@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState, useLayoutEffect} from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Dam, Eye, Gauge, Thermometer, Wind, X, CheckCircle} from "lucide-react";
+import { ArrowLeft, Dam, Eye, Gauge, Thermometer, Wind, X, CheckCircle} from "lucide-react";
 import "./AniadirEmbalse.css";
 import AppHeader from "../../components/AppHeader/AppHeader.jsx";
 import AppFooter from "../../components/AppFooter/AppFooter.jsx";
@@ -69,6 +69,10 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
     const embalseIdEditar = searchParams.get('id');
     const modoEdicion = !!embalseIdEditar;
     const redirected = useRef(false);
+
+    const handleVolverConfiguracion = () => {
+        navigate('/configuracion-embalse');
+    };
 
     useEffect(() => {
         if (!modoEdicion) return;
@@ -502,6 +506,10 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
                             {modoEdicion ? 'Editar embalse' : 'Añadir embalse'}
                         </h2>
                         <div className="embalse-selector-wrap">
+                            <button type="button" onClick={handleVolverConfiguracion} className="btn-volver-configuracion">
+                                <ArrowLeft size={16} aria-hidden="true" />
+                                Volver
+                            </button>
                             <button disabled={guardando} onClick={handleGuardarEmbalse} className="btn-guardar">
                                 {guardando ? 'Guardando...' : 'Guardar Embalse'}
                             </button>
@@ -841,6 +849,10 @@ function AniadirEmbalse({vistaActiva = "aniadir", onCambiarVista}) {
 
                         {/* BOTÓN GUARDAR INFERIOR */}
                         <div className="anadir-embalse-footer-btn">
+                            <button type="button" onClick={handleVolverConfiguracion} className="btn-volver-configuracion btn-volver-configuracion-footer">
+                                <ArrowLeft size={16} aria-hidden="true" />
+                                Volver
+                            </button>
                             <button disabled={guardando} onClick={handleGuardarEmbalse}  className="btn-guardar-footer">
                                 {guardando ? 'Guardando...' : 'Guardar Embalse'}
                             </button>

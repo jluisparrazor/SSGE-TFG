@@ -63,7 +63,7 @@ test('Controlador de Ingesta y Tareas (API REST) - Cobertura 100%', async (t) =>
     const originalConsoleError = console.error;
     const originalConsoleWarn = console.warn;
     
-    let originalPrismaFindMany, originalPrismaFindUnique, originalProcesarPayload;
+    let originalPrismaFindMany, originalPrismaFindUnique, originalProcesarLote;
     let originalExistsSync = fs.existsSync;
     let mockExistsSync = null;
 
@@ -81,7 +81,7 @@ test('Controlador de Ingesta y Tareas (API REST) - Cobertura 100%', async (t) =>
         
         originalPrismaFindMany = prisma.embalse.findMany;
         originalPrismaFindUnique = prisma.embalse.findUnique;
-        originalProcesarPayload = MedicionController.procesarYGuardarPayload;
+        originalProcesarLote = MedicionController.procesarYGuardarLote;
 
         fs.existsSync = (p) => mockExistsSync ? mockExistsSync(p) : originalExistsSync(p);
         spawnMockCallbacks = {};
@@ -93,7 +93,7 @@ test('Controlador de Ingesta y Tareas (API REST) - Cobertura 100%', async (t) =>
         
         prisma.embalse.findMany = originalPrismaFindMany;
         prisma.embalse.findUnique = originalPrismaFindUnique;
-        MedicionController.procesarYGuardarPayload = originalProcesarPayload;
+        MedicionController.procesarYGuardarLote = originalProcesarLote;
         
         mockExistsSync = null;
     });
@@ -194,14 +194,11 @@ test('Controlador de Ingesta y Tareas (API REST) - Cobertura 100%', async (t) =>
         assert.match(res.body.mensaje, /no devolvió datos/);
     });
 
-    await t.test('POST /api/ingesta/historico - Éxito procesando datos con fallos aislados (catch interno)', async () => {
+    await t.test('POST /api/ingesta/historico - Éxito procesando datos en lote', async () => {
         prisma.embalse.findUnique = async () => ({ id: 1, nombre: 'Canales' });
         
-        let contadorLlamadas = 0;
-        MedicionController.procesarYGuardarPayload = async () => {
-            contadorLlamadas++;
-            if (contadorLlamadas === 2) throw new Error('Fallo aislado simulado');
-            return true;
+        MedicionController.procesarYGuardarLote = async ({ registros }) => {
+            return Array.isArray(registros) ? registros.length : 0;
         };
 
         const res = await request(app).post('/api/ingesta/historico').send({ 
@@ -209,7 +206,7 @@ test('Controlador de Ingesta y Tareas (API REST) - Cobertura 100%', async (t) =>
         });
         
         assert.strictEqual(res.status, 200);
-        assert.strictEqual(res.body.registrosNuevos, 1);
+        assert.strictEqual(res.body.registrosNuevos, 2);
     });
 
     await t.test('POST /api/ingesta/historico - Falla general (catch externo)', async () => {

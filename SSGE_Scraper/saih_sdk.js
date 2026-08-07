@@ -2,6 +2,27 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
+function resolverExecutablePath() {
+    const candidatos = [
+        process.env.PLAYWRIGHT_EXECUTABLE_PATH,
+        process.env.CHROMIUM_EXECUTABLE_PATH,
+        process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/snap/bin/chromium',
+    ].filter(Boolean);
+
+    for (const candidato of candidatos) {
+        if (fs.existsSync(candidato)) {
+            return candidato;
+        }
+    }
+
+    return undefined;
+}
+
 async function obtenerDatosEstacion(nombreEstacion, fechaInicio, fechaFin, filtroSensor = null) {
     const rutaDiccionario = path.join(__dirname, 'data', 'diccionario_saih.json');
     if (!fs.existsSync(rutaDiccionario)) throw new Error("No se encuentra diccionario_saih.json");
@@ -14,7 +35,12 @@ async function obtenerDatosEstacion(nombreEstacion, fechaInicio, fechaFin, filtr
         !filtroSensor || s.nombre_sensor.toUpperCase().includes(filtroSensor.toUpperCase())
     );
 
-    const browser = await chromium.launch({ headless: true });
+    const executablePath = resolverExecutablePath();
+    const browser = await chromium.launch({
+        headless: true,
+        executablePath,
+        args: executablePath ? ['--no-sandbox', '--disable-setuid-sandbox'] : [],
+    });
     const page = await browser.newPage();
     const url = 'https://www.chguadalquivir.es/saih/DatosHistoricos.aspx';
 
@@ -25,7 +51,7 @@ async function obtenerDatosEstacion(nombreEstacion, fechaInicio, fechaFin, filtr
         await page.fill('#ContentPlaceHolder1_FechaInicial', fechaInicio);
         await page.fill('#ContentPlaceHolder1_FechaFinal', fechaFin);
         await page.selectOption('#ContentPlaceHolder1_ListaRemotas', info.id_punto);
-        await page.waitForTimeout(1500);
+        await page.waitForSelector('#ContentPlaceHolder1_ListaSen');
 
         const mapaRenombrado = {};
         for (const sensor of sensoresAAgregar) {
@@ -33,11 +59,11 @@ async function obtenerDatosEstacion(nombreEstacion, fechaInicio, fechaFin, filtr
             mapaRenombrado[idCorto] = sensor.nombre_sensor.replace(idCorto, "").trim();
             await page.selectOption('#ContentPlaceHolder1_ListaSen', sensor.id_sensor);
             await page.click('#ContentPlaceHolder1_AgregarSeñal');
-            await page.waitForTimeout(800);
+            await page.waitForSelector('#ContentPlaceHolder1_ListaSen');
         }
 
         await page.click('#ContentPlaceHolder1_Visualizar');
-        await page.waitForTimeout(5000);
+        await page.waitForSelector('table');
 
         const tablasExtraidas = await page.$$eval('table', (tablas) => {
             return tablas.map(t => {
