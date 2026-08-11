@@ -182,6 +182,8 @@ const extraerUltimasFilasValidas = (datos, cantidad = 4) => {
 };
 
 let lecturaEnCurso = false;
+// Tiempo máximo de una ejecución: 10 min
+const MAX_DURACION_LECTURA_MS = 10 * 60 * 1000;
 
 // Lógica de extracción y envío
 const ejecutarLectura = async () => {
@@ -191,6 +193,10 @@ const ejecutarLectura = async () => {
 	}
 
 	lecturaEnCurso = true;
+    const safetyTimer = setTimeout(() => {
+        console.error('[Cron] Seguridad: liberando bloqueo tras alcanzar el tiempo máximo.');
+        lecturaEnCurso = false;
+    }, MAX_DURACION_LECTURA_MS);
     console.log(`\n[Cron] Iniciando lectura programada: ${new Date().toLocaleString()}`);
     try {
         const fechaActual = obtenerFechaHoy();
@@ -254,23 +260,30 @@ const ejecutarLectura = async () => {
             }
         }
     } finally {
+        clearTimeout(safetyTimer);
         lecturaEnCurso = false;
     }
 };
 
+let cronIniciado = false;
+
 socket.on('connect', () => {
     console.log(`[Producción] Conectado al Nodo Central. ID de sesión: ${socket.id}`);
-    
-    // 1. Ejecución inmediata al arrancar el servicio (para poblar la interfaz sin esperar)
-    ejecutarLectura();
-    
-    // 2. Programación del Cron Job
-    // La expresión '0 * * * *' significa: "Ejecutar en el minuto 0 de cada hora" (ej. 15:00, 16:00)
-    cron.schedule('0 * * * *', () => {
+
+    if (!cronIniciado) {
+        cronIniciado = true;
+
+        // 1. Ejecución inmediata al arrancar el servicio (para poblar la interfaz sin esperar)
         ejecutarLectura();
-    });
-    
-    console.log('[Producción] ⏳ Servicio en segundo plano activo. Esperando el siguiente ciclo horario...');
+
+        // 2. Programación del Cron Job (solo una vez)
+        // La expresión '0 * * * *' significa: "Ejecutar en el minuto 0 de cada hora" (ej. 15:00, 16:00)
+        cron.schedule('0 * * * *', () => {
+            ejecutarLectura();
+        });
+
+        console.log('[Producción] ⏳ Servicio en segundo plano activo. Esperando el siguiente ciclo horario...');
+    }
 });
 
 socket.on('connect_error', (err) => {

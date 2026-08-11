@@ -42,6 +42,7 @@ async function obtenerDatosEstacion(nombreEstacion, fechaInicio, fechaFin, filtr
         args: executablePath ? ['--no-sandbox', '--disable-setuid-sandbox'] : [],
     });
     const page = await browser.newPage();
+    page.setDefaultTimeout(12000);
     const url = 'https://www.chguadalquivir.es/saih/DatosHistoricos.aspx';
 
     try {
