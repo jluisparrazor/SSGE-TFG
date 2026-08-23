@@ -41,10 +41,16 @@ async function obtenerDatosEstacion(nombreEstacion, fechaInicio, fechaFin, filtr
     );
 
     const executablePath = resolverExecutablePath();
+    console.log(`[Scraper] Chromium: ${executablePath || 'Playwright integrado'}`);
     const browser = await chromium.launch({
         headless: true,
         executablePath,
-        args: executablePath ? ['--no-sandbox', '--disable-setuid-sandbox'] : [],
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+        ],
     });
     const page = await browser.newPage();
     page.setDefaultTimeout(12000);
