@@ -3,6 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 function resolverExecutablePath() {
+    const candidatosPath = (process.env.PATH || '')
+        .split(path.delimiter)
+        .filter(Boolean)
+        .map((directorio) => path.join(directorio, 'chromium'));
     const candidatos = [
         process.env.PLAYWRIGHT_EXECUTABLE_PATH,
         process.env.CHROMIUM_EXECUTABLE_PATH,
@@ -12,6 +16,7 @@ function resolverExecutablePath() {
         '/usr/bin/google-chrome',
         '/usr/bin/google-chrome-stable',
         '/snap/bin/chromium',
+        ...candidatosPath,
     ].filter(Boolean);
 
     for (const candidato of candidatos) {

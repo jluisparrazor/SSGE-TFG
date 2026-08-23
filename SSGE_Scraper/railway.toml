@@ -2,6 +2,6 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "npx playwright install chromium --with-deps && node produccion.js"
+startCommand = "node produccion.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
