@@ -292,8 +292,9 @@ socket.on('connect', () => {
         ejecutarLectura();
 
         // 2. Programación del Cron Job (solo una vez)
-        // La expresión '0 * * * *' significa: "Ejecutar en el minuto 0 de cada hora" (ej. 15:00, 16:00)
-        cron.schedule('0 * * * *', () => {
+        // La expresión '30 * * * *' significa: "Ejecutar en el minuto 30 de cada hora" (ej. 15:30, 16:30)
+        // Esto da a la CHG ~30 min de retraso para que disponga el dato de la hora actual
+        cron.schedule('30 * * * *', () => {
             ejecutarLectura();
         });
 
