@@ -22,6 +22,7 @@ const INGESTA_API_KEY = process.env.INGESTA_API_KEY || '';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || INGESTA_API_KEY;
 const PORT = Number(process.env.PORT) || 3001;
+const TIMEOUT_INGESTA_MS = 15000;
 
 if (!INGESTA_API_KEY) {
     console.error('[Producción] INGESTA_API_KEY no definida. Crea SSGE_Scraper/.env o usa SSGE_Backend/.env con esta clave.');
@@ -181,6 +182,20 @@ const extraerUltimasFilasValidas = (datos, cantidad = 4) => {
         .reverse();
 };
 
+const guardarMedicion = (payload) => new Promise((resolve, reject) => {
+    socket.timeout(TIMEOUT_INGESTA_MS).emit('medicion_scrapper', payload, (error, respuesta) => {
+        if (error) {
+            reject(new Error(`Sin confirmación del backend tras ${TIMEOUT_INGESTA_MS / 1000}s`));
+            return;
+        }
+        if (!respuesta?.ok) {
+            reject(new Error(respuesta?.error || 'El backend rechazó la medición'));
+            return;
+        }
+        resolve(respuesta);
+    });
+});
+
 let lecturaEnCurso = false;
 // Tiempo máximo de una ejecución: 10 min
 const MAX_DURACION_LECTURA_MS = 10 * 60 * 1000;
@@ -252,8 +267,8 @@ const ejecutarLectura = async () => {
                         mediciones: fila
                     };
 
-                    socket.emit('medicion_scrapper', payload);
-                    console.log(`[Cron] ${nombreEmbalse} -> ${payload.timestamp}`);
+                    const confirmacion = await guardarMedicion(payload);
+                    console.log(`[Cron] ${nombreEmbalse} -> ${payload.timestamp} guardada (${confirmacion.timestamp})`);
                 }
             } catch (error) {
                 console.error(`[Cron] ${nombreEmbalse}: error durante la extracción:`, error.message);

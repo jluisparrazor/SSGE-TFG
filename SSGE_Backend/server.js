@@ -56,22 +56,30 @@ io.on('connection', (socket) => {
 		timestamp: new Date().toISOString(),
 	});
 
-	socket.on('medicion_scrapper', async (datos) => {
+	socket.on('medicion_scrapper', async (datos, confirmar) => {
 		if (!socketIngestaAutorizado) {
-			socket.emit('server:error', { message: 'No autorizado para ingesta' });
+			const respuesta = { ok: false, error: 'No autorizado para ingesta' };
+			socket.emit('server:error', { message: respuesta.error });
+			if (typeof confirmar === 'function') confirmar(respuesta);
 			return;
 		}
 
 		if (!datos || !datos.timestamp) {
-			socket.emit('server:error', { message: 'Payload de medicion invalido' });
+			const respuesta = { ok: false, error: 'Payload de medicion invalido' };
+			socket.emit('server:error', { message: respuesta.error });
+			if (typeof confirmar === 'function') confirmar(respuesta);
 			return;
 		}
 
 		try {
+			const medicion = await MedicionController.procesarYGuardarPayload(datos);
 			io.emit('actualizar_dashboard', datos);
-			await MedicionController.procesarYGuardarPayload(datos);
+			if (typeof confirmar === 'function') {
+				confirmar({ ok: true, id: medicion.id, timestamp: medicion.timestamp });
+			}
 		} catch (error) {
-			console.error('Error al persistir datos:', error.message);
+			console.error(`Error al persistir ${datos.timestamp}:`, error.message);
+			if (typeof confirmar === 'function') confirmar({ ok: false, error: error.message });
 		}
 	});
 
