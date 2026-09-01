@@ -11,7 +11,7 @@ class MedicionRepository {
         return !!embalse;
     }
 
-    static async obtenerPorRango(embalseId, fechaLimite, limite = 500) {
+    static async obtenerPorRango(embalseId, fechaLimite, limite = 3000) {
         return prisma.medicionHistorica.findMany({
             where: {
                 embalseId: embalseId,
