@@ -12,6 +12,27 @@ function demandaMensualAHm3PorPaso(demandaMensualHm3, pasoMin) {
   return (Number(demandaMensualHm3) / minutosMes) * pasoMin;
 }
 
+function calcularCausaAlerta(proyeccion, alertaMaxima) {
+  if (!Array.isArray(proyeccion) || proyeccion.length === 0 || alertaMaxima === 'Normal') {
+    return 'Nivel dentro de los márgenes normales durante toda la simulación';
+  }
+
+  const pasoCausante = proyeccion.find((paso) => paso.riesgo === alertaMaxima);
+  if (!pasoCausante) return null;
+
+  const momento = pasoCausante.timestampReal
+    ? new Date(pasoCausante.timestampReal).toLocaleString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : `+${Math.round((pasoCausante.instanteMin || 0) / 60)}h`;
+
+  return `Nivel del embalse alcanzó ${pasoCausante.nivelPorcentaje}% el ${momento} (desembalse de seguridad: ${pasoCausante.desembalseSeguridadM3s} m³/s)`;
+}
+
 function gradoPertenencia(x, a, b, c, d) {
   if (x <= a || x >= d) return 0;
   if (x >= b && x <= c) return 1;
@@ -466,4 +487,5 @@ function simularEscenarioHistorico({ embalse, estadoInicial, serieHistorica, esc
 module.exports = {
   simularEscenarioManual,
   simularEscenarioHistorico,
+  calcularCausaAlerta,
 };

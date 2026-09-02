@@ -1,5 +1,5 @@
 const { prisma } = require('../lib/prisma');
-const { simularEscenarioManual, simularEscenarioHistorico } = require('../services/MotorSimulacion');
+const { simularEscenarioManual, simularEscenarioHistorico, calcularCausaAlerta} = require('../services/MotorSimulacion');
 
 const ejecutarSimulacion = async (req, res) => {
   try {
@@ -101,6 +101,10 @@ const ejecutarSimulacion = async (req, res) => {
 
     return res.json({
       ...resultado,
+      metricas: {
+        ...resultado.metricas,
+        causaAlertaMaxima: calcularCausaAlerta(resultado.proyeccion, resultado.metricas.alertaMaxima),
+      },
       id: resultadoGuardado.id,
       fechaEjecucion: resultadoGuardado.fechaEjecucion,
     });
@@ -166,11 +170,19 @@ const obtenerSimulaciones = async (req, res) => {
         alertaMaxima: true,
         duracionMin: true,
         parametrosInput: true,
+        proyeccion: true,
         embalse: { select: { id: true, nombre: true } },
       },
     });
 
-    return res.json(resultados);
+    const conCausa = resultados.map(({ proyeccion, ...resto }) => ({
+      ...resto,
+      causaAlertaMaxima: calcularCausaAlerta(proyeccion, resto.alertaMaxima),
+    }));
+
+    return res.json(conCausa);
+
+    //return res.json(resultados);
   } catch (error) {
     console.error('Error en GET /api/simulaciones:', error);
     return res.status(500).json({ error: error.message || 'Error DB' });
@@ -198,6 +210,7 @@ const obtenerSimulacionPorId = async (req, res) => {
 
     const metricas = {
       alertaMaxima: simulacion.alertaMaxima,
+      causaAlertaMaxima: calcularCausaAlerta(proyeccion, simulacion.alertaMaxima),
       volumenTotalDesembalsadoHm3: Number(volumenTotalDesembalsadoHm3.toFixed(4)),
       demandaUrbanaSatisfechaPct: totalUrbanaObjetivo > 0 ? Number(((totalUrbanaServida / totalUrbanaObjetivo) * 100).toFixed(2)) : 100,
       demandaAgrariaSatisfechaPct: totalAgrariaObjetivo > 0 ? Number(((totalAgrariaServida / totalAgrariaObjetivo) * 100).toFixed(2)) : 100,

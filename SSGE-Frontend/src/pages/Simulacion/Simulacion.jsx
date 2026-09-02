@@ -814,13 +814,13 @@ export default function Simulacion() {
 
             <div className="form-card-content">
               <div className="simulacion-estado-grid">
-                <div className="compuerta-campo">
+                <div className={`compuerta-campo ${modoEscenario === 'manual' ? 'compuerta-campo--full' : ''}`}>
                   <div className="sensor-header">
                     <div className="sensor-icon">
                       <Droplets size={18} className="sensor-icon-svg" />
                     </div>
                     <div className="sensor-info">
-                      <span className="sensor-label">Nivel porcentual</span>
+                      <span className="sensor-label">Nivel de llenado inicial (%)</span>
                       <span className="sensor-subtitle">
                         {modoEscenario === 'manual' ? 'Ajusta para simular' : 'Valor real del SAIH'}
                       </span>
@@ -917,6 +917,7 @@ export default function Simulacion() {
                 </div>
 
                 {/* 4. CAUDAL ENTRADA ACTUAL */}
+                {modoEscenario !== 'manual' && (
                 <div className="compuerta-campo">
                   <div className="sensor-header">
                     <div className="sensor-icon">
@@ -938,6 +939,7 @@ export default function Simulacion() {
                     disabled={modoEscenario === 'manual' || modoEscenario === 'historico'}
                   />
                 </div>
+              )}  
               </div>
 
               <div className="simulacion-cotas-grid">
@@ -991,8 +993,15 @@ export default function Simulacion() {
             </h3>
 
             <div className={`simulacion-alerta-chip simulacion-alerta-chip--${riesgoAlertaMaxima}`}>
-              <Play size={16} />
-              <span>Alerta máxima: {alertaMaxima}</span>
+              <div className="simulacion-alerta-chip-titulo">
+                <Play size={16} />
+                <span>Alerta máxima: {alertaMaxima}</span>
+              </div>
+              {resultadoSimulacion?.metricas?.causaAlertaMaxima && (
+                <span className="simulacion-alerta-causa">
+                  {resultadoSimulacion.metricas.causaAlertaMaxima}
+                </span>
+              )}
             </div>
           </div>
 
@@ -1056,7 +1065,7 @@ export default function Simulacion() {
                       className={`simulacion-toggle-btn btn-proyectado ${visibilidadGrafica.volumenProyectado ? 'activo' : ''}`}
                     >
                       {visibilidadGrafica.volumenProyectado ? <Eye size={15} /> : <EyeOff size={15} />}
-                      Vol. Proyectado
+                      Volumen Simulado
                     </button>
 
                     {/* Oculto en modo manual */}
@@ -1067,7 +1076,7 @@ export default function Simulacion() {
                         className={`simulacion-toggle-btn btn-real ${visibilidadGrafica.volumenReal ? 'activo' : ''}`}
                       >
                         {visibilidadGrafica.volumenReal ? <Eye size={15} /> : <EyeOff size={15} />}
-                        Vol. Real
+                        Volumen Real
                       </button>
                     )}
 
@@ -1077,7 +1086,7 @@ export default function Simulacion() {
                       className={`simulacion-toggle-btn btn-caudal-sim ${visibilidadGrafica.caudalSimulado ? 'activo' : ''}`}
                     >
                       {visibilidadGrafica.caudalSimulado ? <Eye size={15} /> : <EyeOff size={15} />}
-                      Caudal Sim.
+                      Caudal Salida Sim.
                     </button>
 
                     {/* Oculto en modo manual */}
@@ -1088,7 +1097,7 @@ export default function Simulacion() {
                         className={`simulacion-toggle-btn btn-caudal-real ${visibilidadGrafica.caudalReal ? 'activo' : ''}`}
                       >
                         {visibilidadGrafica.caudalReal ? <Eye size={15} /> : <EyeOff size={15} />}
-                        Caudal Real
+                        Caudal Salida Real
                       </button>
                     )}
 
@@ -1190,7 +1199,7 @@ export default function Simulacion() {
                           yAxisId="left"
                           type="monotone"
                           dataKey="volumenHm3"
-                          name="Vol. proyectado (hm³)"
+                          name="Vol. Simulado (hm³)"
                           stroke="#22d3ee"
                           strokeWidth={3}
                           dot={false}
@@ -1203,7 +1212,7 @@ export default function Simulacion() {
                           yAxisId="left"
                           type="monotone"
                           dataKey="volumenRealHm3"
-                          name="Vol. real SAIH (hm³)"
+                          name="Vol. Real (hm³)"
                           stroke="#a855f7"
                           strokeWidth={2}
                           strokeDasharray="5 5"
@@ -1219,8 +1228,8 @@ export default function Simulacion() {
                           yAxisId="right"
                           type="stepAfter"
                           dataKey="caudalSalidaTotalSimuladoM3s"
-                          name="Desembalse sim. (m³/s)"
-                          stroke="#fca5a5"
+                          name="Caudal Salida sim. (m³/s)"
+                          stroke="#a5f3fc"
                           strokeWidth={2}
                           dot={false}
                         />
@@ -1231,8 +1240,8 @@ export default function Simulacion() {
                           yAxisId="right"
                           type="stepAfter"
                           dataKey="caudalSalidaRealM3s"
-                          name="Desembalse real (m³/s)"
-                          stroke="#4ade80"
+                          name="Caudal Salida real (m³/s)"
+                          stroke="#d8b4fe"
                           strokeDasharray="3 3"
                           strokeWidth={2}
                           dot={false}
@@ -1317,6 +1326,29 @@ export default function Simulacion() {
                     </div>
                   </div>
 
+                  {datosGrafica.length > 0 && (
+                    <div className="simulacion-progreso-wrap">
+                      <input
+                        type="range"
+                        className="simulacion-progreso-slider"
+                        min={0}
+                        max={datosGrafica.length - 1}
+                        step={1}
+                        value={pasoSeleccionado ?? datosGrafica.length - 1}
+                        onChange={(e) => {
+                          setAnimando(false); // al arrastrar, pausamos el auto-play
+                          setPasoSeleccionado(Number(e.target.value));
+                        }}
+                        style={{
+                          '--progreso-pct': `${((pasoSeleccionado ?? datosGrafica.length - 1) / (datosGrafica.length - 1)) * 100}%`
+                        }}
+                      />
+                      <span className="simulacion-progreso-texto">
+                        {(pasoSeleccionado ?? datosGrafica.length - 1) + 1} / {datosGrafica.length}
+                      </span>
+                    </div>
+                  )}
+
                   {datosInfografia && (
                     <EmbalseInfografia 
                       datoActual={datosInfografia}
@@ -1370,7 +1402,10 @@ export default function Simulacion() {
                           <td>{simulacion.embalse?.nombre || '--'}</td>
                           <td>{simulacion.tipo || '--'}</td>
                           <td>
-                            <span className={`simulacion-riesgo-badge simulacion-riesgo-badge--${riesgoFila}`}>
+                            <span
+                              className={`simulacion-riesgo-badge simulacion-riesgo-badge--${riesgoFila}`}
+                              title={simulacion.causaAlertaMaxima || ''}
+                            >
                               {simulacion.alertaMaxima || '--'}
                             </span>
                           </td>

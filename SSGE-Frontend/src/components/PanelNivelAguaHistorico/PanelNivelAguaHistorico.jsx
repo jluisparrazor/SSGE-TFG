@@ -165,7 +165,7 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
                 <button
                     type="button"
                     onClick={() => setVisibilidadGrafica(prev => ({ ...prev, volumen: !prev.volumen }))}
-                    className={`simulacion-toggle-btn btn-proyectado ${visibilidadGrafica.volumen ? 'activo' : ''}`}
+                    className={`historico-toggle-btn btn-historico-volumen ${visibilidadGrafica.volumen ? 'activo' : ''}`}
                 >
                     {visibilidadGrafica.volumen ? <Eye size={15} /> : <EyeOff size={15} />}
                     Volumen (hm³)
@@ -174,7 +174,7 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
                 <button
                     type="button"
                     onClick={() => setVisibilidadGrafica(prev => ({ ...prev, caudalEntrada: !prev.caudalEntrada }))}
-                    className={`simulacion-toggle-btn btn-caudal-real ${visibilidadGrafica.caudalEntrada ? 'activo' : ''}`}
+                    className={`historico-toggle-btn btn-historico-entrada ${visibilidadGrafica.caudalEntrada ? 'activo' : ''}`}
                 >
                     {visibilidadGrafica.caudalEntrada ? <Eye size={15} /> : <EyeOff size={15} />}
                     Caudal Entrada (m³/s)
@@ -183,7 +183,7 @@ function PanelNivelAguaHistorico({ embalseId, refreshToken = 0}) {
                 <button
                     type="button"
                     onClick={() => setVisibilidadGrafica(prev => ({ ...prev, caudalSalida: !prev.caudalSalida }))}
-                    className={`simulacion-toggle-btn btn-caudal-sim ${visibilidadGrafica.caudalSalida ? 'activo' : ''}`}
+                    className={`historico-toggle-btn btn-historico-salida ${visibilidadGrafica.caudalSalida ? 'activo' : ''}`}
                 >
                     {visibilidadGrafica.caudalSalida ? <Eye size={15} /> : <EyeOff size={15} />}
                     Caudal Salida (m³/s)
