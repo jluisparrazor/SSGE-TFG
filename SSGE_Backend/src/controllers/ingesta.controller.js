@@ -91,7 +91,8 @@ function lanzarScriptIngesta(nombreTarea) {
 	}
 
 	tareasEnEjecucion.add(nombreTarea);
-	const proceso = spawn('node', [scriptPath], { cwd: scraperDir, detached: true, stdio: 'ignore' });
+	const argumentos = nombreTarea === 'produccion' ? [scriptPath, '--once'] : [scriptPath];
+	const proceso = spawn('node', argumentos, { cwd: scraperDir, detached: true, stdio: 'ignore' });
 	proceso.on('error', () => tareasEnEjecucion.delete(nombreTarea));
 	proceso.on('exit', () => tareasEnEjecucion.delete(nombreTarea));
 	proceso.unref();
