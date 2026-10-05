@@ -11,6 +11,10 @@ const auditoriaRoutes = require('./routes/auditoria.routes');
 
 const app = express();
 
+app.get('/health', (_req, res) => {
+	res.json({ ok: true });
+});
+
 // --- Middlewares Globales ---
 app.use(cors());
 app.use(express.json());

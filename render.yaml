@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: ssge-backend
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INGESTA_API_KEY
+        sync: false
+      - key: BACKEND_URL
+        fromService:
+          type: web
+          name: ssge-backend
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: SCRAPER_DIR
+        value: /app/SSGE_Scraper

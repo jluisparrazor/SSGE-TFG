@@ -1,0 +1,12 @@
+.git
+.vscode
+.github
+capitulos
+**/node_modules
+**/coverage
+**/tmp
+**/.env
+**/.env.*
+*.tex
+*.bib
+*.log

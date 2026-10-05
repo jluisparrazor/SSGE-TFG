@@ -35,8 +35,10 @@ fs.writeFileSync(path.join(tempDir, 'saih_sdk.js'), sdkContent);
 
 // Interceptar child_process.spawn para evitar que lance procesos de verdad
 let spawnMockCallbacks = {};
+let spawnMockArgs = [];
 const originalSpawn = cp.spawn;
 cp.spawn = (cmd, args, opts) => {
+    spawnMockArgs = args;
     return {
         on: (event, cb) => { spawnMockCallbacks[event] = cb; },
         unref: () => {}
@@ -85,6 +87,7 @@ test('Controlador de Ingesta y Tareas (API REST) - Cobertura 100%', async (t) =>
 
         fs.existsSync = (p) => mockExistsSync ? mockExistsSync(p) : originalExistsSync(p);
         spawnMockCallbacks = {};
+        spawnMockArgs = [];
     });
 
     t.afterEach(() => {
@@ -135,6 +138,7 @@ test('Controlador de Ingesta y Tareas (API REST) - Cobertura 100%', async (t) =>
         // 1. Lanzamos la tarea por primera vez (Éxito)
         let res = await request(app).post('/api/ingesta/tareas').send({ tarea: 'produccion' });
         assert.strictEqual(res.status, 202);
+        assert.deepStrictEqual(spawnMockArgs.slice(1), ['--once']);
 
         // 2. Intentamos lanzarla de nuevo mientras está corriendo (Debe dar 409)
         res = await request(app).post('/api/ingesta/tareas').send({ tarea: 'produccion' });
