@@ -1,0 +1,51 @@
+name: Scraper SAIH
+
+on:
+  schedule:
+    - cron: '30 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  ejecutar-scraper:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.ENABLE_SCRAPER_SCHEDULE == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: SSGE_Scraper
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: SSGE_Scraper/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Chromium y dependencias del sistema
+        run: npx playwright install --with-deps chromium
+
+      - name: Comprobar secretos requeridos
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          INGESTA_API_KEY: ${{ secrets.INGESTA_API_KEY }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then
+            echo "Falta configurar el secreto BACKEND_URL"
+            exit 1
+          fi
+          if [ -z "$INGESTA_API_KEY" ]; then
+            echo "Falta configurar el secreto INGESTA_API_KEY"
+            exit 1
+          fi
+
+      - name: Ejecutar lectura única
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          INGESTA_API_KEY: ${{ secrets.INGESTA_API_KEY }}
+        run: npm start -- --once

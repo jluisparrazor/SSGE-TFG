@@ -23,6 +23,8 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || INGESTA_API_KEY;
 const PORT = Number(process.env.PORT) || 3001;
 const TIMEOUT_INGESTA_MS = 15000;
+const MODO_EJECUCION_UNICA = process.argv.includes('--once');
+const TIMEOUT_CONEXION_MS = 60000;
 
 if (!INGESTA_API_KEY) {
     console.error('[Producción] INGESTA_API_KEY no definida. Crea SSGE_Scraper/.env o usa SSGE_Backend/.env con esta clave.');
@@ -213,6 +215,7 @@ const ejecutarLectura = async () => {
         lecturaEnCurso = false;
     }, MAX_DURACION_LECTURA_MS);
     console.log(`\n[Cron] Iniciando lectura programada: ${new Date().toLocaleString()}`);
+    let huboErrores = false;
     try {
         const fechaActual = obtenerFechaHoy();
         const fechaAyer = obtenerFechaAyer();
@@ -220,7 +223,7 @@ const ejecutarLectura = async () => {
 
         if (embalsesConfigurados.length === 0) {
             console.log('[Cron] No hay embalses con código SAIH configurado.');
-            return;
+            return false;
         }
 
         console.log(`[Cron] Embalses objetivo: ${embalsesConfigurados.length}`);
@@ -252,6 +255,7 @@ const ejecutarLectura = async () => {
 
                 if (ultimas4.length === 0) {
                     console.log(`[Cron] ${nombreEmbalse}: tampoco hay datos válidos del día anterior.`);
+                    huboErrores = true;
                     continue;
                 }
 
@@ -272,8 +276,10 @@ const ejecutarLectura = async () => {
                 }
             } catch (error) {
                 console.error(`[Cron] ${nombreEmbalse}: error durante la extracción:`, error.message);
+                huboErrores = true;
             }
         }
+        return !huboErrores;
     } finally {
         clearTimeout(safetyTimer);
         lecturaEnCurso = false;
@@ -281,12 +287,35 @@ const ejecutarLectura = async () => {
 };
 
 let cronIniciado = false;
+let timeoutConexion;
 
-socket.on('connect', () => {
+if (MODO_EJECUCION_UNICA) {
+    timeoutConexion = setTimeout(() => {
+        console.error('[Producción] Tiempo agotado conectando con el Nodo Central.');
+        process.exitCode = 1;
+        socket.disconnect();
+    }, TIMEOUT_CONEXION_MS);
+}
+
+socket.on('connect', async () => {
     console.log(`[Producción] Conectado al Nodo Central. ID de sesión: ${socket.id}`);
 
     if (!cronIniciado) {
         cronIniciado = true;
+
+        if (MODO_EJECUCION_UNICA) {
+            clearTimeout(timeoutConexion);
+            try {
+                const lecturaCorrecta = await ejecutarLectura();
+                if (!lecturaCorrecta) process.exitCode = 1;
+            } catch (error) {
+                console.error('[Producción] Error en la ejecución única:', error.message || error);
+                process.exitCode = 1;
+            } finally {
+                socket.disconnect();
+            }
+            return;
+        }
 
         // 1. Ejecución inmediata al arrancar el servicio (para poblar la interfaz sin esperar)
         ejecutarLectura();
@@ -311,6 +340,8 @@ socket.on('ingesta:refresh-config', async (evento) => {
     await ejecutarLectura();
 });
 
-app.listen(PORT, () => {
-    console.log(`[Producción] API HTTP activa en puerto ${PORT}`);
-});
+if (!MODO_EJECUCION_UNICA) {
+    app.listen(PORT, () => {
+        console.log(`[Producción] API HTTP activa en puerto ${PORT}`);
+    });
+}
