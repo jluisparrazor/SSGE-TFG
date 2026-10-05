@@ -7,6 +7,7 @@ on:
 
 jobs:
   ejecutar-scraper:
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.ENABLE_SCRAPER_SCHEDULE == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
