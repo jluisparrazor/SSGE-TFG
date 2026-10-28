@@ -22,9 +22,9 @@ const INGESTA_API_KEY = process.env.INGESTA_API_KEY || '';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || INGESTA_API_KEY;
 const PORT = Number(process.env.PORT) || 3001;
-const TIMEOUT_INGESTA_MS = 15000;
+const TIMEOUT_INGESTA_MS = 30000;
 const MODO_EJECUCION_UNICA = process.argv.includes('--once');
-const TIMEOUT_CONEXION_MS = 60000;
+const TIMEOUT_CONEXION_MS = 180000;
 
 if (!INGESTA_API_KEY) {
     console.error('[Producción] INGESTA_API_KEY no definida. Crea SSGE_Scraper/.env o usa SSGE_Backend/.env con esta clave.');
