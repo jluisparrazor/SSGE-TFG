@@ -201,6 +201,24 @@ const guardarMedicion = (payload) => new Promise((resolve, reject) => {
 let lecturaEnCurso = false;
 // Tiempo máximo de una ejecución: 10 min
 const MAX_DURACION_LECTURA_MS = 10 * 60 * 1000;
+const MAX_EMBALSES_SIMULTANEOS = 3;
+
+const ejecutarConcurrenciaLimitada = async (elementos, limite, callback) => {
+    let siguiente = 0;
+    const trabajador = async () => {
+        while (true) {
+            const indice = siguiente++;
+            if (indice >= elementos.length) return;
+            await callback(elementos[indice]);
+        }
+    };
+
+    const trabajadores = Array.from(
+        { length: Math.min(limite, elementos.length) },
+        () => trabajador()
+    );
+    await Promise.all(trabajadores);
+};
 
 // Lógica de extracción y envío
 const ejecutarLectura = async () => {
@@ -228,7 +246,7 @@ const ejecutarLectura = async () => {
 
         console.log(`[Cron] Embalses objetivo: ${embalsesConfigurados.length}`);
         
-        for (const configEmbalse of embalsesConfigurados) {
+        await ejecutarConcurrenciaLimitada(embalsesConfigurados, MAX_EMBALSES_SIMULTANEOS, async (configEmbalse) => {
             const estacionObjetivo = configEmbalse.saihEstacionCodigo;
             const embalseId = configEmbalse.id;
             const nombreEmbalse = configEmbalse.nombre;
@@ -256,12 +274,12 @@ const ejecutarLectura = async () => {
                 if (ultimas4.length === 0) {
                     console.log(`[Cron] ${nombreEmbalse}: tampoco hay datos válidos del día anterior.`);
                     huboErrores = true;
-                    continue;
+                    return;
                 }
 
                 console.log(`[Cron] ${nombreEmbalse}: enviando ${ultimas4.length} lectura(s) de fecha objetivo: ${fechaUsada}`);
 
-                for (const fila of ultimas4) {
+                await Promise.all(ultimas4.map(async (fila) => {
                     const payload = {
                         origen: 'SAIH_CHG_PRODUCCION',
                         embalse: nombreEmbalse,
@@ -273,12 +291,12 @@ const ejecutarLectura = async () => {
 
                     const confirmacion = await guardarMedicion(payload);
                     console.log(`[Cron] ${nombreEmbalse} -> ${payload.timestamp} guardada (${confirmacion.timestamp})`);
-                }
+                }));
             } catch (error) {
                 console.error(`[Cron] ${nombreEmbalse}: error durante la extracción:`, error.message);
                 huboErrores = true;
             }
-        }
+        });
         return !huboErrores;
     } finally {
         clearTimeout(safetyTimer);
