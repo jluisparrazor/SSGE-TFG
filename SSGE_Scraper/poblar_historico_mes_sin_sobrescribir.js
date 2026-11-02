@@ -6,6 +6,7 @@ const https = require('https');
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 const INGESTA_API_KEY = process.env.INGESTA_API_KEY || '';
+const TIMEOUT_CONFIRMACION_MS = 50000;
 
 const socket = io(BACKEND_URL, {
   auth: {
@@ -54,6 +55,20 @@ const getJson = (url) => {
       .on('error', reject);
   });
 };
+
+const guardarMedicion = (payload) => new Promise((resolve, reject) => {
+  socket.timeout(TIMEOUT_CONFIRMACION_MS).emit('medicion_scrapper', payload, (error, respuesta) => {
+    if (error) {
+      reject(new Error(`Sin confirmación del backend tras ${TIMEOUT_CONFIRMACION_MS / 1000}s`));
+      return;
+    }
+    if (!respuesta?.ok) {
+      reject(new Error(respuesta?.error || 'El backend rechazó la medición'));
+      return;
+    }
+    resolve(respuesta);
+  });
+});
 
 const obtenerEmblesesBD = async () => {
   const url = `${BACKEND_URL}/api/embalses`;
@@ -162,10 +177,10 @@ const iniciarPoblacion = async () => {
 
           // DEBUG: mostrar claves de mediciones en la primera
           if (emitidos === 0) {
-            console.log(`   📋 Claves en mediciones:`, Object.keys(fila).slice(0, 10));
+            console.log(`  Claves en mediciones:`, Object.keys(fila).slice(0, 10));
           }
 
-          socket.emit('medicion_scrapper', payload);
+          await guardarMedicion(payload);
           existentes.add(timestamp);
           emitidos += 1;
 
