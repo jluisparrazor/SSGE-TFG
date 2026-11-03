@@ -53,12 +53,33 @@ async function obtenerDatosEstacion(nombreEstacion, fechaInicio, fechaFin, filtr
         ],
     });
     const page = await browser.newPage();
-    page.setDefaultTimeout(12000);
+    page.setDefaultTimeout(15000);
     const url = 'https://www.chguadalquivir.es/saih/DatosHistoricos.aspx';
 
     try {
         console.log(`[Scraper] Conectando a CHG para: ${nombreEstacion}`);
-        await page.goto(url);
+        let ultimoError;
+        for (let intento = 1; intento <= 3; intento++) {
+            try {
+                await page.goto(url, {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 30000,
+                });
+                await page.locator('#ContentPlaceHolder1_FechaInicial').waitFor({
+                    state: 'visible',
+                    timeout: 15000,
+                });
+                ultimoError = null;
+                break;
+            } catch (error) {
+                ultimoError = error;
+                if (intento < 3) {
+                    console.warn(`[Scraper] Reintento de conexión a CHG (${intento}/2): ${error.message}`);
+                    await page.waitForTimeout(intento * 1000);
+                }
+            }
+        }
+        if (ultimoError) throw ultimoError;
 
         await page.fill('#ContentPlaceHolder1_FechaInicial', fechaInicio);
         await page.fill('#ContentPlaceHolder1_FechaFinal', fechaFin);
