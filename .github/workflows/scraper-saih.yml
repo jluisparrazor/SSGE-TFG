@@ -8,7 +8,9 @@ on:
 jobs:
   ejecutar-scraper:
     if: ${{ github.event_name == 'workflow_dispatch' || vars.ENABLE_SCRAPER_SCHEDULE == 'true' }}
-    runs-on: ubuntu-latest
+    # Playwright 1.58.2 todavía no admite Ubuntu 26.04, que puede recibir
+    # ubuntu-latest antes de que se publique una versión compatible.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
       run:
